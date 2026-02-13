@@ -21,6 +21,7 @@ A fast daily-use expense tracker built with HTML, CSS, and JavaScript.
 - India locale defaults (`en-IN`, `INR`, `Asia/Kolkata`)
 - Local-only storage in browser `localStorage`
 - Backup and restore with JSON export/import
+- Installable on mobile as a PWA
 - GitHub Pages ready build output in `docs/`
 
 ## Setup
@@ -65,6 +66,12 @@ npm run build:pages
 - Source: `Deploy from a branch`
 - Branch: `main`
 - Folder: `/docs`
+
+## Install on Mobile
+
+1. Open the app in Chrome on Android (or Safari on iPhone).
+2. In browser menu, choose `Add to Home screen` / `Install app`.
+3. Launch from home screen like a normal app.
 
 ## Live URL
 

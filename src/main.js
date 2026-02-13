@@ -125,6 +125,14 @@ function clearBackupNotice() {
   showBackupNotice("");
 }
 
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  });
+}
+
 function setMainControlsDisabled(disabled) {
   submitBtn.disabled = disabled;
   cancelEditBtn.disabled = disabled;
@@ -567,5 +575,6 @@ importDataInput.addEventListener("change", async () => {
   loadLocalDataIntoState();
   setSelectedType("expense");
   clearBackupNotice();
+  registerServiceWorker();
   renderAll();
 })();

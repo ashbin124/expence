@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Expense Tracker">
+  <defs>
+    <linearGradient id="bg512" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#e07a4f" />
+      <stop offset="1" stop-color="#c65b33" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="110" fill="url(#bg512)" />
+  <circle cx="256" cy="256" r="160" fill="#fff4ea" opacity="0.2" />
+  <path d="M170 170h182M170 230h154M170 292h138" stroke="#fff8f2" stroke-width="28" stroke-linecap="round" />
+  <path d="M234 364c43 0 80-24 80-58 0-56-112-26-112-73 0-23 23-42 58-42 26 0 47 10 62 26" fill="none" stroke="#fff8f2" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" />
+</svg>
