@@ -38,9 +38,14 @@ Then open the local URL printed by Vite.
 
 ```bash
 npm run lint
+npm run test
 npm run build
 npm run check-format
 ```
+
+## CI
+
+GitHub Actions runs `npm run ci` on pushes to `main` and pull requests.
 
 ## Production checklist
 
@@ -52,6 +57,7 @@ npm run build:pages
 
 2. Push to `main`.
 3. In GitHub repo settings:
+
 - `Settings -> Pages -> Build and deployment`
 - Source: `Deploy from a branch`
 - Branch: `main`

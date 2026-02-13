@@ -15,4 +15,20 @@ export default [
       },
     },
   },
+  {
+    files: ["src/**/*.test.js"],
+    languageOptions: {
+      sourceType: "module",
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        describe: "readonly",
+        it: "readonly",
+        expect: "readonly",
+        beforeEach: "readonly",
+        afterEach: "readonly",
+        vi: "readonly",
+      },
+    },
+  },
 ];
