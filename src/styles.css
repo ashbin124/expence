@@ -371,6 +371,10 @@ h1 {
   margin-bottom: 10px;
 }
 
+.auth-toggle {
+  margin-bottom: 10px;
+}
+
 .auth-status-cloud {
   color: var(--income);
 }
@@ -381,8 +385,12 @@ h1 {
 
 .auth-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.auth-logged-in-actions {
+  margin-top: 8px;
 }
 
 .auth-error {

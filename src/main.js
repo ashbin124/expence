@@ -53,6 +53,8 @@ const filterButtons = document.querySelectorAll(".filter-btn");
 const authForm = document.getElementById("authForm");
 const authStatusEl = document.getElementById("authStatus");
 const authErrorEl = document.getElementById("authError");
+const authToggleBtn = document.getElementById("authToggleBtn");
+const authLoggedInActionsEl = document.getElementById("authLoggedInActions");
 const authEmailInput = document.getElementById("authEmail");
 const authPasswordInput = document.getElementById("authPassword");
 const loginBtn = document.getElementById("loginBtn");
@@ -61,6 +63,7 @@ const logoutBtn = document.getElementById("logoutBtn");
 const budgetSubmitBtn = budgetForm.querySelector('button[type="submit"]');
 
 let mainLoadingCount = 0;
+let isAuthFormExpanded = false;
 
 const elements = {
   listEl: document.getElementById("transactionList"),
@@ -149,16 +152,30 @@ function setAuthStatus(message, mode = "local") {
 
 function setAuthControls({ configured, loggedIn, loading = false }) {
   const locked = !configured;
+  const showLoginForm = configured && !loggedIn && isAuthFormExpanded;
+
+  if (locked || loggedIn) {
+    isAuthFormExpanded = false;
+  }
+
+  authForm.hidden = !showLoginForm;
+  authToggleBtn.hidden = !configured || loggedIn;
+  authLoggedInActionsEl.hidden = !configured || !loggedIn;
+
+  if (!authToggleBtn.hidden) {
+    authToggleBtn.textContent = showLoginForm ? "Hide Login Form" : "Connect Account";
+  }
 
   authEmailInput.disabled = locked || loggedIn || loading;
   authPasswordInput.disabled = locked || loggedIn || loading;
 
-  loginBtn.hidden = !configured || loggedIn;
-  signupBtn.hidden = !configured || loggedIn;
+  loginBtn.hidden = !showLoginForm;
+  signupBtn.hidden = !showLoginForm;
   logoutBtn.hidden = !configured || !loggedIn;
 
-  loginBtn.disabled = loading;
-  signupBtn.disabled = loading;
+  authToggleBtn.disabled = loading;
+  loginBtn.disabled = loading || !showLoginForm;
+  signupBtn.disabled = loading || !showLoginForm;
   logoutBtn.disabled = loading;
 }
 
@@ -618,6 +635,23 @@ budgetForm.addEventListener("submit", async (event) => {
     });
   } catch (error) {
     showError(readErrorMessage(error, "Unable to save budget right now."));
+  }
+});
+
+authToggleBtn.addEventListener("click", () => {
+  if (!isSupabaseConfigured || state.user) return;
+
+  isAuthFormExpanded = !isAuthFormExpanded;
+  clearAuthError();
+
+  setAuthControls({
+    configured: isSupabaseConfigured,
+    loggedIn: Boolean(state.user),
+    loading: false,
+  });
+
+  if (isAuthFormExpanded) {
+    authEmailInput.focus();
   }
 });
 

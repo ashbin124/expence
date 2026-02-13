@@ -78,7 +78,10 @@
             <p id="authStatus" class="hint auth-status">
               Local mode. Add Supabase keys to enable cloud sync.
             </p>
-            <form id="authForm" novalidate>
+            <button id="authToggleBtn" class="ghost-btn auth-toggle" type="button">
+              Connect Account
+            </button>
+            <form id="authForm" novalidate hidden>
               <div class="field">
                 <label for="authEmail">Email</label>
                 <input
@@ -103,11 +106,11 @@
               <div class="auth-actions">
                 <button id="loginBtn" class="ghost-btn" type="submit">Log In</button>
                 <button id="signupBtn" class="ghost-btn" type="button">Sign Up</button>
-                <button id="logoutBtn" class="ghost-btn" type="button" hidden>
-                  Log Out
-                </button>
               </div>
             </form>
+            <div id="authLoggedInActions" class="auth-logged-in-actions" hidden>
+              <button id="logoutBtn" class="ghost-btn" type="button">Log Out</button>
+            </div>
             <div
               id="authError"
               class="error auth-error"
