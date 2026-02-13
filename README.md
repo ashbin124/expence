@@ -20,7 +20,7 @@ A fast daily-use expense tracker built with HTML, CSS, and JavaScript.
 - Local mode with browser `localStorage`
 - Cloud mode with Supabase login/signup/logout and per-user data isolation
 - Auth session sync across refresh/tabs
-- CI workflow for format, lint, and production build
+- GitHub Pages ready build output in `docs/`
 
 ## Setup
 
@@ -71,11 +71,25 @@ npm run check-format
 
 ## Production Checklist
 
-1. Set real Supabase env vars in hosting platform settings.
-2. Run `supabase/schema.sql` in your Supabase project.
-3. Configure Supabase auth URL settings with your deployed frontend URL.
-4. Push to `main` and ensure GitHub Actions CI passes.
-5. Deploy on Vercel/Netlify (build command: `npm run build`, output: `dist`).
+1. Run `supabase/schema.sql` in your Supabase project.
+2. Build the GitHub Pages version:
+   ```bash
+   npm run build:pages
+   ```
+3. Push to `main`.
+4. In GitHub repo settings:
+   - `Settings -> Pages -> Build and deployment`
+   - Source: `Deploy from a branch`
+   - Branch: `main`
+   - Folder: `/docs`
+5. Configure Supabase auth URL settings with your deployed URL:
+   - `https://ashbin124.github.io/expence/`
+
+## Live URL
+
+After GitHub Pages deploy succeeds, your app will be available at:
+
+`https://ashbin124.github.io/expence/`
 
 ## Project structure
 
@@ -92,6 +106,7 @@ npm run check-format
 │  └─ styles.css
 ├─ supabase/
 │  └─ schema.sql   # tables and RLS policies
+├─ docs/           # production build served by GitHub Pages
 ├─ .env.example
 ├─ eslint.config.js
 ├─ .prettierrc

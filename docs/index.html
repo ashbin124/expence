@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Expense Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="/expence/assets/index-JstaflUH.js"></script>
+    <link rel="stylesheet" crossorigin href="/expence/assets/index-DXLDvosU.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="header">
+        <h1>Expense Tracker</h1>
+        <p>
+          Track income and expenses with instant totals. Choose Expense or Income, enter
+          amount, and save.
+        </p>
+      </section>
+
+      <section class="content">
+        <article class="card">
+          <div class="summary-grid">
+            <div class="summary-box">
+              <div class="summary-label">Balance</div>
+              <div id="balance" class="summary-value">₹0.00</div>
+            </div>
+            <div class="summary-box">
+              <div class="summary-label">Income</div>
+              <div id="income" class="summary-value income">₹0.00</div>
+            </div>
+            <div class="summary-box">
+              <div class="summary-label">Expense</div>
+              <div id="expense" class="summary-value expense">₹0.00</div>
+            </div>
+            <div class="summary-box">
+              <div class="summary-label">Budget Left (This Month)</div>
+              <div id="budgetLeft" class="summary-value">₹0.00</div>
+              <div id="budgetSummaryNote" class="summary-note">
+                No monthly budget set.
+              </div>
+            </div>
+          </div>
+
+          <div class="tool-row" aria-label="Transaction controls">
+            <button class="filter-btn active" type="button" data-filter="all">All</button>
+            <button class="filter-btn" type="button" data-filter="income">Income</button>
+            <button class="filter-btn" type="button" data-filter="expense">
+              Expense
+            </button>
+            <input
+              id="searchInput"
+              class="search-input"
+              type="search"
+              placeholder="Search title or category"
+            />
+            <button id="clearAllBtn" class="clear-btn" type="button">Clear All</button>
+          </div>
+
+          <div class="list-wrap">
+            <ul id="transactionList" class="transaction-list" aria-live="polite"></ul>
+          </div>
+
+          <section class="monthly-section" aria-label="Monthly overview">
+            <h3 class="section-title">Monthly Overview</h3>
+            <div id="monthlyOverview" class="monthly-overview"></div>
+          </section>
+        </article>
+
+        <aside class="card">
+          <section class="auth-panel" aria-label="Account sync">
+            <h3 class="section-title">Account Sync</h3>
+            <p id="authStatus" class="hint auth-status">
+              Local mode. Add Supabase keys to enable cloud sync.
+            </p>
+            <form id="authForm" novalidate>
+              <div class="field">
+                <label for="authEmail">Email</label>
+                <input
+                  id="authEmail"
+                  name="authEmail"
+                  type="email"
+                  autocomplete="email"
+                  placeholder="you@example.com"
+                />
+              </div>
+              <div class="field">
+                <label for="authPassword">Password</label>
+                <input
+                  id="authPassword"
+                  name="authPassword"
+                  type="password"
+                  autocomplete="current-password"
+                  minlength="6"
+                  placeholder="At least 6 characters"
+                />
+              </div>
+              <div class="auth-actions">
+                <button id="loginBtn" class="ghost-btn" type="submit">Log In</button>
+                <button id="signupBtn" class="ghost-btn" type="button">Sign Up</button>
+                <button id="logoutBtn" class="ghost-btn" type="button" hidden>
+                  Log Out
+                </button>
+              </div>
+            </form>
+            <div
+              id="authError"
+              class="error auth-error"
+              role="status"
+              aria-live="polite"
+            ></div>
+          </section>
+
+          <h2 id="formTitle" class="form-title">Quick Add</h2>
+          <p class="hint">
+            Pick type, enter amount, and save. Note is optional, date auto-uses today.
+          </p>
+          <form id="transactionForm" novalidate>
+            <div class="field">
+              <label>Type</label>
+              <div class="type-toggle" role="radiogroup" aria-label="Transaction type">
+                <label class="type-pill">
+                  <input type="radio" name="txType" value="expense" checked />
+                  <span>Expense</span>
+                </label>
+                <label class="type-pill">
+                  <input type="radio" name="txType" value="income" />
+                  <span>Income</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="amount">Amount (INR)</label>
+              <input
+                id="amount"
+                name="amount"
+                type="number"
+                step="0.01"
+                required
+                placeholder="e.g. 250"
+              />
+              <div class="quick-amounts" aria-label="Quick amounts">
+                <button class="quick-amount-btn" type="button" data-amount="100">
+                  100
+                </button>
+                <button class="quick-amount-btn" type="button" data-amount="500">
+                  500
+                </button>
+                <button class="quick-amount-btn" type="button" data-amount="1000">
+                  1000
+                </button>
+                <button class="quick-amount-btn" type="button" data-amount="2000">
+                  2000
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="title">Note (optional)</label>
+              <input
+                id="title"
+                name="title"
+                type="text"
+                maxlength="50"
+                placeholder="e.g. Lunch"
+              />
+            </div>
+
+            <div class="form-actions">
+              <button id="submitBtn" class="submit-btn" type="submit">
+                Save Transaction
+              </button>
+              <button id="cancelEditBtn" class="ghost-btn" type="button" hidden>
+                Cancel Edit
+              </button>
+            </div>
+
+            <div id="error" class="error" role="status" aria-live="polite"></div>
+          </form>
+
+          <section class="budget-panel" aria-label="Monthly budget">
+            <h3 class="section-title">Monthly Budget</h3>
+            <form id="budgetForm" novalidate>
+              <div class="field">
+                <label for="budgetLimit">Expense Limit (INR)</label>
+                <input
+                  id="budgetLimit"
+                  name="budgetLimit"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="e.g. 2000"
+                />
+              </div>
+              <button class="ghost-btn" type="submit">Save Budget</button>
+            </form>
+            <div class="budget-stats">
+              <span id="budgetSpent">Spent this month: ₹0.00</span>
+              <span id="budgetLimitText">Limit: Not set</span>
+            </div>
+            <div class="meter" aria-hidden="true">
+              <span id="budgetMeterBar" class="meter-expense" style="width: 0%"></span>
+            </div>
+            <p id="budgetAlert" class="budget-alert" aria-live="polite">
+              Set a monthly budget to track spending limits.
+            </p>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+  </body>
+</html>
