@@ -170,16 +170,17 @@ function updateInstallUi() {
     return;
   }
 
-  installAppBtn.hidden = true;
-  installAppBtn.disabled = true;
+  installAppBtn.hidden = false;
+  installAppBtn.disabled = mainLoadingCount > 0;
 
   if (isIosSafari()) {
-    installAppHintEl.textContent = "On iPhone, tap Share and choose Add to Home Screen.";
+    installAppHintEl.textContent =
+      "iPhone: tap the install icon, then use Safari Share > Add to Home Screen.";
     return;
   }
 
   installAppHintEl.textContent =
-    "Install option appears automatically when supported by your browser.";
+    "Tap the install icon. If no popup appears, use browser menu > Add to Home screen.";
 }
 
 function setupInstallPrompt() {
@@ -204,7 +205,17 @@ function setupInstallPrompt() {
   }
 
   installAppBtn.addEventListener("click", async () => {
-    if (!deferredInstallPrompt) return;
+    if (!deferredInstallPrompt) {
+      if (isIosSafari()) {
+        installAppHintEl.textContent =
+          "In Safari: Share button -> Add to Home Screen -> Add.";
+        return;
+      }
+
+      installAppHintEl.textContent =
+        "Open your browser menu and choose Install App or Add to Home screen.";
+      return;
+    }
 
     installAppBtn.disabled = true;
 
@@ -251,7 +262,7 @@ function setMainControlsDisabled(disabled) {
   });
 
   if (installAppBtn) {
-    installAppBtn.disabled = disabled || !deferredInstallPrompt;
+    installAppBtn.disabled = disabled;
   }
 }
 
