@@ -19,6 +19,8 @@ A fast daily-use expense tracker built with HTML, CSS, and JavaScript.
 - India locale defaults (`en-IN`, `INR`, `Asia/Kolkata`)
 - Local mode with browser `localStorage`
 - Cloud mode with Supabase login/signup/logout and per-user data isolation
+- Auth session sync across refresh/tabs
+- CI workflow for format, lint, and production build
 
 ## Setup
 
@@ -49,6 +51,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 - Enable Email auth provider.
 - If you want instant signup login in development, disable email confirmation.
+- Add your production app URL in Auth URL configuration before deploying.
 
 ## Run locally
 
@@ -65,6 +68,14 @@ npm run lint
 npm run build
 npm run check-format
 ```
+
+## Production Checklist
+
+1. Set real Supabase env vars in hosting platform settings.
+2. Run `supabase/schema.sql` in your Supabase project.
+3. Configure Supabase auth URL settings with your deployed frontend URL.
+4. Push to `main` and ensure GitHub Actions CI passes.
+5. Deploy on Vercel/Netlify (build command: `npm run build`, output: `dist`).
 
 ## Project structure
 

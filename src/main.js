@@ -12,7 +12,7 @@ import {
   signUpWithEmail,
   updateCloudTransaction,
 } from "./cloud.js";
-import { isSupabaseConfigured } from "./supabase.js";
+import { isSupabaseConfigured, supabase } from "./supabase.js";
 import { loadBudget, loadTransactions, saveBudget, saveTransactions } from "./storage.js";
 import {
   renderFilterButtons,
@@ -58,6 +58,9 @@ const authPasswordInput = document.getElementById("authPassword");
 const loginBtn = document.getElementById("loginBtn");
 const signupBtn = document.getElementById("signupBtn");
 const logoutBtn = document.getElementById("logoutBtn");
+const budgetSubmitBtn = budgetForm.querySelector('button[type="submit"]');
+
+let mainLoadingCount = 0;
 
 const elements = {
   listEl: document.getElementById("transactionList"),
@@ -157,6 +160,44 @@ function setAuthControls({ configured, loggedIn, loading = false }) {
   loginBtn.disabled = loading;
   signupBtn.disabled = loading;
   logoutBtn.disabled = loading;
+}
+
+function setMainControlsDisabled(disabled) {
+  submitBtn.disabled = disabled;
+  cancelEditBtn.disabled = disabled;
+  clearAllBtn.disabled = disabled;
+  budgetInput.disabled = disabled;
+  budgetSubmitBtn.disabled = disabled;
+
+  amountInput.disabled = disabled;
+  titleInput.disabled = disabled;
+  searchInput.disabled = disabled;
+
+  filterButtons.forEach((button) => {
+    button.disabled = disabled;
+  });
+
+  quickAmountButtons.forEach((button) => {
+    button.disabled = disabled;
+  });
+
+  txTypeInputs.forEach((input) => {
+    input.disabled = disabled;
+  });
+}
+
+async function runWithMainLoading(task) {
+  mainLoadingCount += 1;
+  setMainControlsDisabled(true);
+
+  try {
+    return await task();
+  } finally {
+    mainLoadingCount = Math.max(0, mainLoadingCount - 1);
+    if (mainLoadingCount === 0) {
+      setMainControlsDisabled(false);
+    }
+  }
 }
 
 function syncBudgetInput() {
@@ -260,6 +301,56 @@ async function runWithAuthLoading(task) {
   }
 }
 
+async function switchToCloudUser(user, { statusMessage } = {}) {
+  state.user = user;
+  state.mode = "cloud";
+  await loadCloudDataIntoState();
+
+  renderAll();
+  setAuthStatus(
+    statusMessage ?? `Cloud sync active: ${state.user.email ?? "Signed in user"}`,
+    "cloud",
+  );
+  setAuthControls({ configured: true, loggedIn: true, loading: false });
+}
+
+function switchToLocalMode(statusMessage) {
+  state.user = null;
+  state.mode = "local";
+  loadLocalDataIntoState();
+
+  renderAll();
+  setAuthStatus(statusMessage, "local");
+  setAuthControls({ configured: isSupabaseConfigured, loggedIn: false, loading: false });
+}
+
+function subscribeToAuthChanges() {
+  if (!supabase) return;
+
+  supabase.auth.onAuthStateChange(async (_event, session) => {
+    const sessionUser = session?.user ?? null;
+
+    if (!sessionUser) {
+      if (state.user) {
+        clearAuthError();
+        switchToLocalMode("Logged out. Using local mode on this browser.");
+      }
+      return;
+    }
+
+    if (state.user && state.user.id === sessionUser.id) return;
+
+    try {
+      clearAuthError();
+      await switchToCloudUser(sessionUser);
+      authPasswordInput.value = "";
+    } catch (error) {
+      showAuthError(readErrorMessage(error, "Session updated, but cloud sync failed."));
+      switchToLocalMode("Session exists, but cloud sync failed. Using local mode.");
+    }
+  });
+}
+
 async function handleLogin() {
   const email = authEmailInput.value.trim();
   const password = authPasswordInput.value;
@@ -273,18 +364,14 @@ async function handleLogin() {
     clearAuthError();
 
     const data = await signInWithEmail(email, password);
-    state.user = data.user ?? null;
+    const nextUser = data.user ?? null;
 
-    if (!state.user) {
+    if (!nextUser) {
       showAuthError("Login failed. Please try again.");
       return;
     }
 
-    state.mode = "cloud";
-    await loadCloudDataIntoState();
-    renderAll();
-
-    setAuthStatus(`Cloud sync active: ${state.user.email ?? "Signed in user"}`, "cloud");
+    await switchToCloudUser(nextUser);
     authPasswordInput.value = "";
   });
 }
@@ -309,15 +396,7 @@ async function handleSignUp() {
     const data = await signUpWithEmail(email, password);
 
     if (data.session && data.user) {
-      state.user = data.user;
-      state.mode = "cloud";
-      await loadCloudDataIntoState();
-      renderAll();
-
-      setAuthStatus(
-        `Cloud sync active: ${state.user.email ?? "Signed in user"}`,
-        "cloud",
-      );
+      await switchToCloudUser(data.user);
       authPasswordInput.value = "";
       return;
     }
@@ -332,15 +411,9 @@ async function handleSignUp() {
 async function handleLogout() {
   await runWithAuthLoading(async () => {
     clearAuthError();
-
     await signOutCurrentUser();
-    state.user = null;
-    state.mode = "local";
-    loadLocalDataIntoState();
-
-    renderAll();
-    setAuthStatus("Logged out. Using local mode on this browser.", "local");
     authPasswordInput.value = "";
+    switchToLocalMode("Logged out. Using local mode on this browser.");
   });
 }
 
@@ -371,33 +444,35 @@ form.addEventListener("submit", async (event) => {
   const payload = { title, amount: normalizedAmount, category, date };
 
   try {
-    if (isCloudMode()) {
-      if (state.editingId) {
-        const updated = await updateCloudTransaction(state.editingId, payload);
+    await runWithMainLoading(async () => {
+      if (isCloudMode()) {
+        if (state.editingId) {
+          const updated = await updateCloudTransaction(state.editingId, payload);
+          state.transactions = state.transactions.map((item) => {
+            if (item.id !== state.editingId) return item;
+            return updated;
+          });
+        } else {
+          const created = await createCloudTransaction(payload);
+          state.transactions.push(created);
+        }
+      } else if (state.editingId) {
         state.transactions = state.transactions.map((item) => {
           if (item.id !== state.editingId) return item;
-          return updated;
+          return { ...item, ...payload };
         });
+        saveTransactions(state.transactions);
       } else {
-        const created = await createCloudTransaction(payload);
-        state.transactions.push(created);
+        state.transactions.push({
+          id: createId(),
+          ...payload,
+        });
+        saveTransactions(state.transactions);
       }
-    } else if (state.editingId) {
-      state.transactions = state.transactions.map((item) => {
-        if (item.id !== state.editingId) return item;
-        return { ...item, ...payload };
-      });
-      saveTransactions(state.transactions);
-    } else {
-      state.transactions.push({
-        id: createId(),
-        ...payload,
-      });
-      saveTransactions(state.transactions);
-    }
 
-    renderAll();
-    resetForm();
+      renderAll();
+      resetForm();
+    });
   } catch (error) {
     showError(readErrorMessage(error, "Unable to save transaction right now."));
   }
@@ -415,21 +490,23 @@ elements.listEl.addEventListener("click", async (event) => {
 
   if (action === "delete") {
     try {
-      if (isCloudMode()) {
-        await deleteCloudTransaction(id);
-      }
+      await runWithMainLoading(async () => {
+        if (isCloudMode()) {
+          await deleteCloudTransaction(id);
+        }
 
-      state.transactions = state.transactions.filter((item) => item.id !== id);
+        state.transactions = state.transactions.filter((item) => item.id !== id);
 
-      if (!isCloudMode()) {
-        saveTransactions(state.transactions);
-      }
+        if (!isCloudMode()) {
+          saveTransactions(state.transactions);
+        }
 
-      if (state.editingId === id) {
-        resetForm();
-      }
+        if (state.editingId === id) {
+          resetForm();
+        }
 
-      renderAll();
+        renderAll();
+      });
     } catch (error) {
       showError(readErrorMessage(error, "Unable to delete transaction right now."));
     }
@@ -489,15 +566,17 @@ clearAllBtn.addEventListener("click", async () => {
   if (!window.confirm("Delete all transactions?")) return;
 
   try {
-    if (isCloudMode()) {
-      await clearCloudTransactions();
-    } else {
-      saveTransactions([]);
-    }
+    await runWithMainLoading(async () => {
+      if (isCloudMode()) {
+        await clearCloudTransactions();
+      } else {
+        saveTransactions([]);
+      }
 
-    state.transactions = [];
-    renderAll();
-    resetForm();
+      state.transactions = [];
+      renderAll();
+      resetForm();
+    });
   } catch (error) {
     showError(readErrorMessage(error, "Unable to clear all transactions right now."));
   }
@@ -521,19 +600,21 @@ budgetForm.addEventListener("submit", async (event) => {
   }
 
   try {
-    if (isCloudMode()) {
-      await saveCloudBudget(state.user.id, state.budgetLimit);
-    } else {
-      saveBudget(state.budgetLimit);
-    }
+    await runWithMainLoading(async () => {
+      if (isCloudMode()) {
+        await saveCloudBudget(state.user.id, state.budgetLimit);
+      } else {
+        saveBudget(state.budgetLimit);
+      }
 
-    renderBudget({
-      transactions: state.transactions,
-      budgetLimit: state.budgetLimit,
-      elements,
-      formatCurrency,
-      locale: APP_LOCALE,
-      timeZone: APP_TIMEZONE,
+      renderBudget({
+        transactions: state.transactions,
+        budgetLimit: state.budgetLimit,
+        elements,
+        formatCurrency,
+        locale: APP_LOCALE,
+        timeZone: APP_TIMEZONE,
+      });
     });
   } catch (error) {
     showError(readErrorMessage(error, "Unable to save budget right now."));
@@ -583,6 +664,7 @@ logoutBtn.addEventListener("click", async () => {
     return;
   }
 
+  subscribeToAuthChanges();
   setAuthControls({ configured: true, loggedIn: false, loading: true });
   setAuthStatus("Checking account session...", "local");
 
@@ -590,28 +672,15 @@ logoutBtn.addEventListener("click", async () => {
     const user = await getCurrentUser();
 
     if (!user) {
-      state.user = null;
-      state.mode = "local";
-      setAuthStatus("Cloud available. Log in to sync your data.", "local");
-      setAuthControls({ configured: true, loggedIn: false, loading: false });
-      renderAll();
+      switchToLocalMode("Cloud available. Log in to sync your data.");
       return;
     }
 
-    state.user = user;
-    state.mode = "cloud";
-    await loadCloudDataIntoState();
-
-    setAuthStatus(`Cloud sync active: ${state.user.email ?? "Signed in user"}`, "cloud");
-    setAuthControls({ configured: true, loggedIn: true, loading: false });
-    renderAll();
+    await switchToCloudUser(user);
   } catch (error) {
-    setAuthStatus(
-      "Cloud setup detected, but session check failed. Using local mode.",
-      "local",
-    );
     showAuthError(readErrorMessage(error, "Unable to connect to auth right now."));
-    setAuthControls({ configured: true, loggedIn: false, loading: false });
-    renderAll();
+    switchToLocalMode(
+      "Cloud setup detected, but session check failed. Using local mode.",
+    );
   }
 })();
