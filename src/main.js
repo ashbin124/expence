@@ -22,6 +22,7 @@ import {
 const APP_LOCALE = "en-IN";
 const APP_CURRENCY = "INR";
 const APP_TIMEZONE = "Asia/Kolkata";
+const AUTH_SESSION_TIMEOUT_MS = 7000;
 
 const state = {
   transactions: [],
@@ -81,6 +82,22 @@ function readErrorMessage(error, fallbackMessage) {
   }
 
   return fallbackMessage;
+}
+
+function withTimeout(promise, timeoutMs, timeoutMessage) {
+  let timerId = null;
+
+  const timeoutPromise = new Promise((_, reject) => {
+    timerId = window.setTimeout(() => {
+      reject(new Error(timeoutMessage));
+    }, timeoutMs);
+  });
+
+  return Promise.race([promise, timeoutPromise]).finally(() => {
+    if (timerId) {
+      window.clearTimeout(timerId);
+    }
+  });
 }
 
 function formatCurrency(value) {
@@ -604,7 +621,11 @@ logoutBtn.addEventListener("click", async () => {
   setAuthStatus("Checking account session...", "local");
 
   try {
-    const user = await getCurrentUser();
+    const user = await withTimeout(
+      getCurrentUser(),
+      AUTH_SESSION_TIMEOUT_MS,
+      "Session check timed out",
+    );
 
     if (!user) {
       switchToLocalMode("Cloud available. Open auth page to log in and sync data.");
