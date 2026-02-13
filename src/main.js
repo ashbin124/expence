@@ -2,9 +2,11 @@ import { getISODateInTimeZone, renderBudget } from "./budget.js";
 import {
   loadBudget,
   loadReminders,
+  loadSettings,
   loadTransactions,
   saveBudget,
   saveReminders,
+  saveSettings,
   saveTransactions,
 } from "./storage.js";
 import {
@@ -16,14 +18,37 @@ import {
   renderTransactions,
 } from "./ui.js";
 
-const APP_LOCALE = "en-IN";
-const APP_CURRENCY = "INR";
-const APP_TIMEZONE = "Asia/Kolkata";
+const DEFAULT_SETTINGS = {
+  locale: "en-IN",
+  currency: "INR",
+  timeZone: "Asia/Kolkata",
+  reminderLeadDays: 1,
+};
+
+const SUPPORTED_LOCALES = new Set(["en-IN", "en-US", "en-GB"]);
+const SUPPORTED_CURRENCIES = new Set(["INR", "USD", "EUR", "GBP"]);
+const SUPPORTED_TIMEZONES = new Set([
+  "Asia/Kolkata",
+  "UTC",
+  "America/New_York",
+  "Europe/London",
+]);
+const SUPPORTED_REMINDER_LEAD_DAYS = new Set([0, 1, 3, 7]);
 
 const state = {
   transactions: [],
   reminders: [],
+  settings: { ...DEFAULT_SETTINGS },
   filter: "all",
+  sortBy: "date_desc",
+  advancedFilters: {
+    dateFrom: "",
+    dateTo: "",
+    minAmount: null,
+    maxAmount: null,
+    category: "all",
+  },
+  isAdvancedFiltersOpen: false,
   search: "",
   editingId: null,
   budgetLimit: 0,
@@ -39,6 +64,16 @@ const txTypeInputs = document.querySelectorAll('input[name="txType"]');
 const quickAmountButtons = document.querySelectorAll(".quick-amount-btn");
 const errorEl = document.getElementById("error");
 const searchInput = document.getElementById("searchInput");
+const toggleAdvancedFiltersBtn = document.getElementById("toggleAdvancedFiltersBtn");
+const advancedFiltersPanel = document.getElementById("advancedFiltersPanel");
+const filterDateFromInput = document.getElementById("filterDateFrom");
+const filterDateToInput = document.getElementById("filterDateTo");
+const filterMinAmountInput = document.getElementById("filterMinAmount");
+const filterMaxAmountInput = document.getElementById("filterMaxAmount");
+const filterCategoryInput = document.getElementById("filterCategory");
+const clearAdvancedFiltersBtn = document.getElementById("clearAdvancedFiltersBtn");
+const activeFilterSummaryEl = document.getElementById("activeFilterSummary");
+const sortTransactionsInput = document.getElementById("sortTransactions");
 const clearAllBtn = document.getElementById("clearAllBtn");
 const budgetForm = document.getElementById("budgetForm");
 const budgetInput = document.getElementById("budgetLimit");
@@ -56,6 +91,14 @@ const reminderListEl = document.getElementById("reminderList");
 const reminderNoticeEl = document.getElementById("reminderNotice");
 const enableReminderAlertsBtn = document.getElementById("enableReminderAlertsBtn");
 const reminderSubmitBtn = reminderForm?.querySelector('button[type="submit"]');
+const settingsForm = document.getElementById("settingsForm");
+const settingsLocaleInput = document.getElementById("settingsLocale");
+const settingsCurrencyInput = document.getElementById("settingsCurrency");
+const settingsTimeZoneInput = document.getElementById("settingsTimeZone");
+const settingsReminderLeadDaysInput = document.getElementById("settingsReminderLeadDays");
+const resetSettingsBtn = document.getElementById("resetSettingsBtn");
+const settingsNoticeEl = document.getElementById("settingsNotice");
+const settingsSubmitBtn = settingsForm?.querySelector('button[type="submit"]');
 const undoToastEl = document.getElementById("undoToast");
 const undoToastTextEl = document.getElementById("undoToastText");
 const undoDeleteBtn = document.getElementById("undoDeleteBtn");
@@ -67,9 +110,15 @@ const filterButtons = document.querySelectorAll(".filter-btn");
 const budgetSubmitBtn = budgetForm.querySelector('button[type="submit"]');
 
 let mainLoadingCount = 0;
-const BACKUP_VERSION = 2;
+const BACKUP_VERSION = 3;
 const MOBILE_VIEW_STORAGE_KEY = "expense-tracker-mobile-view-v1";
-const MOBILE_VIEWS = new Set(["transactions", "add", "insights", "reminders"]);
+const MOBILE_VIEWS = new Set([
+  "transactions",
+  "add",
+  "insights",
+  "reminders",
+  "settings",
+]);
 let deferredInstallPrompt = null;
 let pendingDeletedTransaction = null;
 let undoDeleteTimer = null;
@@ -103,15 +152,58 @@ function readErrorMessage(error, fallbackMessage) {
   return fallbackMessage;
 }
 
+function normalizeSettings(input) {
+  if (!input || typeof input !== "object") {
+    return { ...DEFAULT_SETTINGS };
+  }
+
+  const locale = SUPPORTED_LOCALES.has(input.locale)
+    ? input.locale
+    : DEFAULT_SETTINGS.locale;
+  const currency = SUPPORTED_CURRENCIES.has(input.currency)
+    ? input.currency
+    : DEFAULT_SETTINGS.currency;
+  const timeZone = SUPPORTED_TIMEZONES.has(input.timeZone)
+    ? input.timeZone
+    : DEFAULT_SETTINGS.timeZone;
+
+  const parsedLeadDays = Number(input.reminderLeadDays);
+  const reminderLeadDays = SUPPORTED_REMINDER_LEAD_DAYS.has(parsedLeadDays)
+    ? parsedLeadDays
+    : DEFAULT_SETTINGS.reminderLeadDays;
+
+  return { locale, currency, timeZone, reminderLeadDays };
+}
+
+function getAppLocale() {
+  return state.settings.locale;
+}
+
+function getAppCurrency() {
+  return state.settings.currency;
+}
+
+function getAppTimeZone() {
+  return state.settings.timeZone;
+}
+
+function getReminderLeadDays() {
+  return state.settings.reminderLeadDays;
+}
+
+function getTodayISO() {
+  return getISODateInTimeZone(getAppTimeZone(), getAppLocale());
+}
+
 function formatCurrency(value) {
-  return new Intl.NumberFormat(APP_LOCALE, {
+  return new Intl.NumberFormat(getAppLocale(), {
     style: "currency",
-    currency: APP_CURRENCY,
+    currency: getAppCurrency(),
   }).format(value);
 }
 
 function formatMonthLabel(value) {
-  return new Date(value + "-01T00:00:00").toLocaleDateString(APP_LOCALE, {
+  return new Date(value + "-01T00:00:00").toLocaleDateString(getAppLocale(), {
     month: "short",
     year: "numeric",
   });
@@ -191,6 +283,146 @@ function setupMobileViewNavigation() {
   applyMobileViewState();
 }
 
+function getActiveAdvancedFilterCount() {
+  let count = 0;
+  const filters = state.advancedFilters;
+  if (filters.dateFrom) count += 1;
+  if (filters.dateTo) count += 1;
+  if (typeof filters.minAmount === "number") count += 1;
+  if (typeof filters.maxAmount === "number") count += 1;
+  if (filters.category && filters.category !== "all") count += 1;
+  return count;
+}
+
+function syncCategoryFilterOptions() {
+  if (!filterCategoryInput) return;
+
+  const categories = Array.from(
+    new Set(
+      state.transactions
+        .map((item) => item.category)
+        .filter((value) => typeof value === "string" && value.trim().length > 0),
+    ),
+  ).sort((a, b) => a.localeCompare(b));
+
+  const previous = state.advancedFilters.category || "all";
+
+  filterCategoryInput.innerHTML = "";
+
+  const allOption = document.createElement("option");
+  allOption.value = "all";
+  allOption.textContent = "All Categories";
+  filterCategoryInput.append(allOption);
+
+  categories.forEach((category) => {
+    const option = document.createElement("option");
+    option.value = category;
+    option.textContent = category;
+    filterCategoryInput.append(option);
+  });
+
+  state.advancedFilters.category = categories.includes(previous) ? previous : "all";
+  filterCategoryInput.value = state.advancedFilters.category;
+}
+
+function syncAdvancedFilterInputs() {
+  if (filterDateFromInput) {
+    filterDateFromInput.value = state.advancedFilters.dateFrom;
+  }
+  if (filterDateToInput) {
+    filterDateToInput.value = state.advancedFilters.dateTo;
+  }
+  if (filterMinAmountInput) {
+    filterMinAmountInput.value =
+      typeof state.advancedFilters.minAmount === "number"
+        ? String(state.advancedFilters.minAmount)
+        : "";
+  }
+  if (filterMaxAmountInput) {
+    filterMaxAmountInput.value =
+      typeof state.advancedFilters.maxAmount === "number"
+        ? String(state.advancedFilters.maxAmount)
+        : "";
+  }
+}
+
+function syncSortInput() {
+  if (!sortTransactionsInput) return;
+  sortTransactionsInput.value = state.sortBy;
+}
+
+function updateAdvancedFiltersUi() {
+  const activeCount = getActiveAdvancedFilterCount();
+
+  if (advancedFiltersPanel) {
+    advancedFiltersPanel.hidden = !state.isAdvancedFiltersOpen;
+  }
+
+  if (toggleAdvancedFiltersBtn) {
+    toggleAdvancedFiltersBtn.setAttribute(
+      "aria-expanded",
+      state.isAdvancedFiltersOpen ? "true" : "false",
+    );
+
+    if (activeCount > 0) {
+      toggleAdvancedFiltersBtn.classList.add("active");
+      toggleAdvancedFiltersBtn.textContent = `Filters (${activeCount})`;
+    } else {
+      toggleAdvancedFiltersBtn.classList.remove("active");
+      toggleAdvancedFiltersBtn.textContent = "More Filters";
+    }
+  }
+
+  if (activeFilterSummaryEl) {
+    activeFilterSummaryEl.textContent =
+      activeCount > 0
+        ? `${activeCount} advanced filter${activeCount === 1 ? "" : "s"} active.`
+        : "No advanced filters active.";
+  }
+}
+
+function resetAdvancedFilters() {
+  state.advancedFilters = {
+    dateFrom: "",
+    dateTo: "",
+    minAmount: null,
+    maxAmount: null,
+    category: "all",
+  };
+
+  syncCategoryFilterOptions();
+  syncAdvancedFilterInputs();
+  updateAdvancedFiltersUi();
+}
+
+function parseAdvancedAmount(value) {
+  if (value === null || value === undefined) return null;
+
+  const trimmed = String(value).trim();
+  if (trimmed === "") return null;
+
+  const parsed = Number(trimmed);
+  if (!Number.isFinite(parsed) || parsed < 0) return null;
+  return Math.round(parsed * 100) / 100;
+}
+
+function applyAdvancedFiltersFromInputs() {
+  state.advancedFilters.dateFrom = filterDateFromInput?.value || "";
+  state.advancedFilters.dateTo = filterDateToInput?.value || "";
+  state.advancedFilters.minAmount = parseAdvancedAmount(filterMinAmountInput?.value);
+  state.advancedFilters.maxAmount = parseAdvancedAmount(filterMaxAmountInput?.value);
+  state.advancedFilters.category = filterCategoryInput?.value || "all";
+
+  updateAdvancedFiltersUi();
+
+  renderTransactions({
+    state,
+    elements,
+    formatCurrency,
+    locale: getAppLocale(),
+  });
+}
+
 function getSelectedType() {
   const checked = Array.from(txTypeInputs).find((input) => input.checked);
   return checked ? checked.value : "expense";
@@ -246,6 +478,26 @@ function showReminderNotice(message, type = "info") {
 
 function clearReminderNotice() {
   showReminderNotice("");
+}
+
+function showSettingsNotice(message, type = "info") {
+  if (!settingsNoticeEl) return;
+
+  settingsNoticeEl.textContent = message;
+  settingsNoticeEl.className = "settings-notice";
+
+  if (type === "success") {
+    settingsNoticeEl.classList.add("backup-notice-success");
+    return;
+  }
+
+  if (type === "error") {
+    settingsNoticeEl.classList.add("backup-notice-error");
+  }
+}
+
+function clearSettingsNotice() {
+  showSettingsNotice("");
 }
 
 function clearUndoToast() {
@@ -469,7 +721,7 @@ function triggerDueReminderNotifications() {
   if (getReminderAlertPermission() !== "granted") return;
   if (state.reminders.length === 0) return;
 
-  const todayISO = getISODateInTimeZone(APP_TIMEZONE, APP_LOCALE);
+  const todayISO = getTodayISO();
   const todayAtMidnight = new Date(todayISO + "T00:00:00");
   const nextReminders = state.reminders.map((reminder) => {
     if (reminder.lastNotifiedOn === todayISO) return reminder;
@@ -479,11 +731,16 @@ function triggerDueReminderNotifications() {
       (dueDateAtMidnight.getTime() - todayAtMidnight.getTime()) / (24 * 60 * 60 * 1000),
     );
 
-    if (daysUntil < 0 || daysUntil > 1) {
+    if (daysUntil < 0 || daysUntil > getReminderLeadDays()) {
       return reminder;
     }
 
-    const prefix = daysUntil === 0 ? "Due today" : "Due tomorrow";
+    const prefix =
+      daysUntil === 0
+        ? "Due today"
+        : daysUntil === 1
+          ? "Due tomorrow"
+          : `Due in ${daysUntil} days`;
     new Notification(`Bill Reminder: ${reminder.title}`, {
       body: `${prefix} - ${formatCurrency(reminder.amount)}`,
       tag: `bill-reminder-${reminder.id}`,
@@ -526,6 +783,24 @@ function setMainControlsDisabled(disabled) {
   if (reminderSubmitBtn) {
     reminderSubmitBtn.disabled = disabled;
   }
+  if (settingsLocaleInput) {
+    settingsLocaleInput.disabled = disabled;
+  }
+  if (settingsCurrencyInput) {
+    settingsCurrencyInput.disabled = disabled;
+  }
+  if (settingsTimeZoneInput) {
+    settingsTimeZoneInput.disabled = disabled;
+  }
+  if (settingsReminderLeadDaysInput) {
+    settingsReminderLeadDaysInput.disabled = disabled;
+  }
+  if (settingsSubmitBtn) {
+    settingsSubmitBtn.disabled = disabled;
+  }
+  if (resetSettingsBtn) {
+    resetSettingsBtn.disabled = disabled;
+  }
   if (enableReminderAlertsBtn) {
     enableReminderAlertsBtn.disabled =
       disabled || getReminderAlertPermission() !== "default";
@@ -534,6 +809,30 @@ function setMainControlsDisabled(disabled) {
   amountInput.disabled = disabled;
   titleInput.disabled = disabled;
   searchInput.disabled = disabled;
+  if (sortTransactionsInput) {
+    sortTransactionsInput.disabled = disabled;
+  }
+  if (toggleAdvancedFiltersBtn) {
+    toggleAdvancedFiltersBtn.disabled = disabled;
+  }
+  if (filterDateFromInput) {
+    filterDateFromInput.disabled = disabled;
+  }
+  if (filterDateToInput) {
+    filterDateToInput.disabled = disabled;
+  }
+  if (filterMinAmountInput) {
+    filterMinAmountInput.disabled = disabled;
+  }
+  if (filterMaxAmountInput) {
+    filterMaxAmountInput.disabled = disabled;
+  }
+  if (filterCategoryInput) {
+    filterCategoryInput.disabled = disabled;
+  }
+  if (clearAdvancedFiltersBtn) {
+    clearAdvancedFiltersBtn.disabled = disabled;
+  }
 
   filterButtons.forEach((button) => {
     button.disabled = disabled;
@@ -645,6 +944,7 @@ function parseBackupData(rawText) {
       transactions,
       budgetLimit: 0,
       reminders: [],
+      settings: { ...DEFAULT_SETTINGS },
       skippedCount: parsed.length - transactions.length,
     };
   }
@@ -661,13 +961,14 @@ function parseBackupData(rawText) {
   const reminders = Array.isArray(parsed.reminders)
     ? normalizeImportedReminders(parsed.reminders)
     : [];
+  const settings = normalizeSettings(parsed.settings);
   const skippedCount = parsed.transactions.length - transactions.length;
 
   const parsedBudget = Number(parsed.budgetLimit);
   const budgetLimit =
     Number.isFinite(parsedBudget) && parsedBudget > 0 ? parsedBudget : 0;
 
-  return { transactions, budgetLimit, reminders, skippedCount };
+  return { transactions, budgetLimit, reminders, settings, skippedCount };
 }
 
 function buildBackupData() {
@@ -677,6 +978,7 @@ function buildBackupData() {
     budgetLimit: state.budgetLimit,
     transactions: state.transactions,
     reminders: state.reminders,
+    settings: state.settings,
   };
 }
 
@@ -686,7 +988,7 @@ function downloadBackupJson(data) {
   const objectUrl = URL.createObjectURL(blob);
 
   const downloadAnchor = document.createElement("a");
-  const datePart = getISODateInTimeZone(APP_TIMEZONE, APP_LOCALE);
+  const datePart = getTodayISO();
   downloadAnchor.href = objectUrl;
   downloadAnchor.download = `expense-tracker-backup-${datePart}.json`;
   document.body.append(downloadAnchor);
@@ -709,15 +1011,19 @@ async function handleImportBackupFile(file) {
       state.transactions = imported.transactions;
       state.budgetLimit = imported.budgetLimit;
       state.reminders = imported.reminders;
+      state.settings = imported.settings;
 
       saveTransactions(state.transactions);
       saveBudget(state.budgetLimit);
       saveReminders(state.reminders);
+      saveSettings(state.settings);
 
       syncBudgetInput();
+      syncSettingsForm();
       clearUndoToast();
       renderAll();
       resetForm();
+      resetReminderForm();
       triggerDueReminderNotifications();
 
       if (imported.skippedCount > 0) {
@@ -762,7 +1068,10 @@ function setEditMode(transaction) {
 }
 
 function renderAll() {
-  const todayISO = getISODateInTimeZone(APP_TIMEZONE, APP_LOCALE);
+  const todayISO = getTodayISO();
+  syncCategoryFilterOptions();
+  updateAdvancedFiltersUi();
+  syncSortInput();
 
   renderSummary({ transactions: state.transactions, elements, formatCurrency });
 
@@ -771,15 +1080,15 @@ function renderAll() {
     budgetLimit: state.budgetLimit,
     elements,
     formatCurrency,
-    locale: APP_LOCALE,
-    timeZone: APP_TIMEZONE,
+    locale: getAppLocale(),
+    timeZone: getAppTimeZone(),
   });
 
   renderTransactions({
     state,
     elements,
     formatCurrency,
-    locale: APP_LOCALE,
+    locale: getAppLocale(),
   });
 
   renderMonthlyOverview({
@@ -800,7 +1109,7 @@ function renderAll() {
     reminders: state.reminders,
     reminderListEl,
     formatCurrency,
-    locale: APP_LOCALE,
+    locale: getAppLocale(),
     todayISO,
   });
 
@@ -821,14 +1130,26 @@ function resetReminderForm() {
   if (!reminderForm || !reminderDateInput) return;
 
   reminderForm.reset();
-  reminderDateInput.value = getISODateInTimeZone(APP_TIMEZONE, APP_LOCALE);
+  reminderDateInput.value = getTodayISO();
+}
+
+function syncSettingsForm() {
+  if (!settingsLocaleInput || !settingsCurrencyInput || !settingsTimeZoneInput) return;
+  if (!settingsReminderLeadDaysInput) return;
+
+  settingsLocaleInput.value = state.settings.locale;
+  settingsCurrencyInput.value = state.settings.currency;
+  settingsTimeZoneInput.value = state.settings.timeZone;
+  settingsReminderLeadDaysInput.value = String(state.settings.reminderLeadDays);
 }
 
 function loadLocalDataIntoState() {
   state.transactions = loadTransactions();
   state.budgetLimit = loadBudget();
   state.reminders = loadReminders();
+  state.settings = normalizeSettings(loadSettings());
   syncBudgetInput();
+  syncSettingsForm();
 }
 
 form.addEventListener("submit", async (event) => {
@@ -848,7 +1169,7 @@ form.addEventListener("submit", async (event) => {
   const title = note || (txType === "expense" ? "Expense" : "Income");
   const category = txType === "expense" ? "Expense" : "Income";
 
-  let date = getISODateInTimeZone(APP_TIMEZONE, APP_LOCALE);
+  let date = getTodayISO();
 
   if (state.editingId) {
     const existing = state.transactions.find((item) => item.id === state.editingId);
@@ -949,6 +1270,56 @@ quickAmountButtons.forEach((button) => {
   });
 });
 
+if (toggleAdvancedFiltersBtn) {
+  toggleAdvancedFiltersBtn.addEventListener("click", () => {
+    state.isAdvancedFiltersOpen = !state.isAdvancedFiltersOpen;
+    updateAdvancedFiltersUi();
+  });
+}
+
+if (filterDateFromInput) {
+  filterDateFromInput.addEventListener("change", () => {
+    applyAdvancedFiltersFromInputs();
+  });
+}
+
+if (filterDateToInput) {
+  filterDateToInput.addEventListener("change", () => {
+    applyAdvancedFiltersFromInputs();
+  });
+}
+
+if (filterMinAmountInput) {
+  filterMinAmountInput.addEventListener("input", () => {
+    applyAdvancedFiltersFromInputs();
+  });
+}
+
+if (filterMaxAmountInput) {
+  filterMaxAmountInput.addEventListener("input", () => {
+    applyAdvancedFiltersFromInputs();
+  });
+}
+
+if (filterCategoryInput) {
+  filterCategoryInput.addEventListener("change", () => {
+    applyAdvancedFiltersFromInputs();
+  });
+}
+
+if (clearAdvancedFiltersBtn) {
+  clearAdvancedFiltersBtn.addEventListener("click", () => {
+    resetAdvancedFilters();
+
+    renderTransactions({
+      state,
+      elements,
+      formatCurrency,
+      locale: getAppLocale(),
+    });
+  });
+}
+
 searchInput.addEventListener("input", () => {
   state.search = searchInput.value;
 
@@ -956,9 +1327,22 @@ searchInput.addEventListener("input", () => {
     state,
     elements,
     formatCurrency,
-    locale: APP_LOCALE,
+    locale: getAppLocale(),
   });
 });
+
+if (sortTransactionsInput) {
+  sortTransactionsInput.addEventListener("change", () => {
+    state.sortBy = sortTransactionsInput.value || "date_desc";
+
+    renderTransactions({
+      state,
+      elements,
+      formatCurrency,
+      locale: getAppLocale(),
+    });
+  });
+}
 
 cancelEditBtn.addEventListener("click", () => {
   resetForm();
@@ -1011,8 +1395,8 @@ budgetForm.addEventListener("submit", async (event) => {
         budgetLimit: state.budgetLimit,
         elements,
         formatCurrency,
-        locale: APP_LOCALE,
-        timeZone: APP_TIMEZONE,
+        locale: getAppLocale(),
+        timeZone: getAppTimeZone(),
       });
     });
   } catch (error) {
@@ -1042,6 +1426,56 @@ importDataInput.addEventListener("change", async () => {
   const selectedFile = importDataInput.files?.[0];
   await handleImportBackupFile(selectedFile);
 });
+
+if (settingsForm) {
+  settingsForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    clearSettingsNotice();
+
+    const nextSettings = normalizeSettings({
+      locale: settingsLocaleInput?.value,
+      currency: settingsCurrencyInput?.value,
+      timeZone: settingsTimeZoneInput?.value,
+      reminderLeadDays: Number(settingsReminderLeadDaysInput?.value),
+    });
+
+    try {
+      await runWithMainLoading(async () => {
+        state.settings = nextSettings;
+        saveSettings(state.settings);
+        syncSettingsForm();
+        resetReminderForm();
+        renderAll();
+        triggerDueReminderNotifications();
+      });
+
+      showSettingsNotice("Settings updated.", "success");
+    } catch (error) {
+      showSettingsNotice(readErrorMessage(error, "Unable to save settings."), "error");
+    }
+  });
+}
+
+if (resetSettingsBtn) {
+  resetSettingsBtn.addEventListener("click", async () => {
+    clearSettingsNotice();
+
+    try {
+      await runWithMainLoading(async () => {
+        state.settings = { ...DEFAULT_SETTINGS };
+        saveSettings(state.settings);
+        syncSettingsForm();
+        resetReminderForm();
+        renderAll();
+        triggerDueReminderNotifications();
+      });
+
+      showSettingsNotice("Settings reset to defaults.", "success");
+    } catch (error) {
+      showSettingsNotice(readErrorMessage(error, "Unable to reset settings."), "error");
+    }
+  });
+}
 
 if (reminderForm) {
   reminderForm.addEventListener("submit", async (event) => {
@@ -1124,7 +1558,7 @@ if (reminderListEl) {
       const reminder = state.reminders.find((item) => item.id === id);
       if (!reminder) return;
 
-      const paymentDate = getISODateInTimeZone(APP_TIMEZONE, APP_LOCALE);
+      const paymentDate = getTodayISO();
 
       try {
         await runWithMainLoading(async () => {
@@ -1168,10 +1602,12 @@ if (undoDeleteBtn) {
 
 (function init() {
   loadLocalDataIntoState();
+  resetAdvancedFilters();
   setSelectedType("expense");
   resetReminderForm();
   clearBackupNotice();
   clearReminderNotice();
+  clearSettingsNotice();
   updateReminderAlertButton();
   registerServiceWorker();
   setupInstallPrompt();

@@ -2,12 +2,15 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   BUDGET_STORAGE_KEY,
   REMINDER_STORAGE_KEY,
+  SETTINGS_STORAGE_KEY,
   STORAGE_KEY,
   loadBudget,
   loadReminders,
+  loadSettings,
   loadTransactions,
   saveBudget,
   saveReminders,
+  saveSettings,
   saveTransactions,
 } from "./storage.js";
 
@@ -149,5 +152,36 @@ describe("storage", () => {
         lastNotifiedOn: "2026-02-13",
       },
     ]);
+  });
+
+  it("saves and loads settings correctly", () => {
+    const settings = {
+      locale: "en-US",
+      currency: "USD",
+      timeZone: "America/New_York",
+      reminderLeadDays: 3,
+    };
+
+    saveSettings(settings);
+    expect(loadSettings()).toEqual(settings);
+  });
+
+  it("returns default settings for invalid settings payload", () => {
+    localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        locale: "invalid",
+        currency: "XXX",
+        timeZone: "Mars/Base",
+        reminderLeadDays: 99,
+      }),
+    );
+
+    expect(loadSettings()).toEqual({
+      locale: "en-IN",
+      currency: "INR",
+      timeZone: "Asia/Kolkata",
+      reminderLeadDays: 1,
+    });
   });
 });

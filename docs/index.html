@@ -19,8 +19,8 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="./assets/main-CBfFA0ru.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/main-B8WRuh7T.css">
+    <script type="module" crossorigin src="./assets/main-CWIJhZ1D.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/main-C84Vh0Ct.css">
   </head>
   <body>
     <main class="shell">
@@ -66,14 +66,91 @@
             <button class="filter-btn" type="button" data-filter="expense">
               Expense
             </button>
+            <button
+              id="toggleAdvancedFiltersBtn"
+              class="filter-btn"
+              type="button"
+              aria-expanded="false"
+              aria-controls="advancedFiltersPanel"
+            >
+              More Filters
+            </button>
             <input
               id="searchInput"
               class="search-input"
               type="search"
               placeholder="Search title or category"
             />
+            <select
+              id="sortTransactions"
+              class="sort-select"
+              aria-label="Sort transactions"
+            >
+              <option value="date_desc">Latest First</option>
+              <option value="date_asc">Oldest First</option>
+              <option value="amount_desc">Amount High-Low</option>
+              <option value="amount_asc">Amount Low-High</option>
+            </select>
             <button id="clearAllBtn" class="clear-btn" type="button">Clear All</button>
           </div>
+
+          <section
+            id="advancedFiltersPanel"
+            class="advanced-filters-panel"
+            aria-label="Advanced filters"
+            data-mobile-view="transactions"
+            hidden
+          >
+            <div class="advanced-filters-grid">
+              <div class="field">
+                <label for="filterDateFrom">From Date</label>
+                <input id="filterDateFrom" type="date" />
+              </div>
+              <div class="field">
+                <label for="filterDateTo">To Date</label>
+                <input id="filterDateTo" type="date" />
+              </div>
+              <div class="field">
+                <label for="filterMinAmount">Min Amount</label>
+                <input
+                  id="filterMinAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g. 100"
+                />
+              </div>
+              <div class="field">
+                <label for="filterMaxAmount">Max Amount</label>
+                <input
+                  id="filterMaxAmount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g. 5000"
+                />
+              </div>
+            </div>
+            <div class="field">
+              <label for="filterCategory">Category</label>
+              <select id="filterCategory">
+                <option value="all">All Categories</option>
+              </select>
+            </div>
+            <div class="advanced-filters-actions">
+              <button id="clearAdvancedFiltersBtn" class="ghost-btn" type="button">
+                Reset Filters
+              </button>
+            </div>
+            <p
+              id="activeFilterSummary"
+              class="filter-summary"
+              role="status"
+              aria-live="polite"
+            >
+              No advanced filters active.
+            </p>
+          </section>
 
           <div class="list-wrap" data-mobile-view="transactions">
             <ul id="transactionList" class="transaction-list" aria-live="polite"></ul>
@@ -277,10 +354,72 @@
             <ul id="reminderList" class="reminder-list" aria-live="polite"></ul>
           </section>
 
+          <section
+            class="settings-panel"
+            aria-label="App settings"
+            data-mobile-view="settings"
+          >
+            <h3 class="section-title">Settings</h3>
+            <p class="hint">
+              Customize locale, currency, timezone, and reminder alert window.
+            </p>
+            <form id="settingsForm" class="settings-form" novalidate>
+              <div class="field">
+                <label for="settingsLocale">Locale</label>
+                <select id="settingsLocale" name="settingsLocale">
+                  <option value="en-IN">English (India)</option>
+                  <option value="en-US">English (US)</option>
+                  <option value="en-GB">English (UK)</option>
+                </select>
+              </div>
+              <div class="field settings-row">
+                <div>
+                  <label for="settingsCurrency">Currency</label>
+                  <select id="settingsCurrency" name="settingsCurrency">
+                    <option value="INR">INR (₹)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="settingsTimeZone">Timezone</label>
+                  <select id="settingsTimeZone" name="settingsTimeZone">
+                    <option value="Asia/Kolkata">Asia/Kolkata</option>
+                    <option value="UTC">UTC</option>
+                    <option value="America/New_York">America/New_York</option>
+                    <option value="Europe/London">Europe/London</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field">
+                <label for="settingsReminderLeadDays">Reminder Alerts Before Due</label>
+                <select id="settingsReminderLeadDays" name="settingsReminderLeadDays">
+                  <option value="0">Due day only</option>
+                  <option value="1">1 day before</option>
+                  <option value="3">3 days before</option>
+                  <option value="7">7 days before</option>
+                </select>
+              </div>
+              <div class="settings-actions">
+                <button class="ghost-btn" type="submit">Save Settings</button>
+                <button id="resetSettingsBtn" class="ghost-btn" type="button">
+                  Reset Defaults
+                </button>
+              </div>
+            </form>
+            <p
+              id="settingsNotice"
+              class="settings-notice"
+              role="status"
+              aria-live="polite"
+            ></p>
+          </section>
+
           <details
             class="more-panel"
             aria-label="More options"
-            data-mobile-view="reminders"
+            data-mobile-view="settings"
           >
             <summary class="more-trigger" aria-label="More options" title="More options">
               <span aria-hidden="true">...</span>
@@ -340,6 +479,9 @@
       </button>
       <button class="mobile-nav-btn" type="button" data-mobile-view-btn="reminders">
         Reminders
+      </button>
+      <button class="mobile-nav-btn" type="button" data-mobile-view-btn="settings">
+        Settings
       </button>
     </nav>
 

@@ -1,6 +1,24 @@
 export const STORAGE_KEY = "expense-tracker-transactions-v1";
 export const BUDGET_STORAGE_KEY = "expense-tracker-budget-v1";
 export const REMINDER_STORAGE_KEY = "expense-tracker-reminders-v1";
+export const SETTINGS_STORAGE_KEY = "expense-tracker-settings-v1";
+
+const DEFAULT_SETTINGS = {
+  locale: "en-IN",
+  currency: "INR",
+  timeZone: "Asia/Kolkata",
+  reminderLeadDays: 1,
+};
+
+const SUPPORTED_LOCALES = new Set(["en-IN", "en-US", "en-GB"]);
+const SUPPORTED_CURRENCIES = new Set(["INR", "USD", "EUR", "GBP"]);
+const SUPPORTED_TIMEZONES = new Set([
+  "Asia/Kolkata",
+  "UTC",
+  "America/New_York",
+  "Europe/London",
+]);
+const SUPPORTED_REMINDER_LEAD_DAYS = new Set([0, 1, 3, 7]);
 
 function safeParseTransactions(raw) {
   if (!raw) return [];
@@ -58,6 +76,35 @@ function safeParseReminders(raw) {
   }
 }
 
+function safeParseSettings(raw) {
+  if (!raw) return { ...DEFAULT_SETTINGS };
+
+  try {
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      return { ...DEFAULT_SETTINGS };
+    }
+
+    const locale = SUPPORTED_LOCALES.has(parsed.locale)
+      ? parsed.locale
+      : DEFAULT_SETTINGS.locale;
+    const currency = SUPPORTED_CURRENCIES.has(parsed.currency)
+      ? parsed.currency
+      : DEFAULT_SETTINGS.currency;
+    const timeZone = SUPPORTED_TIMEZONES.has(parsed.timeZone)
+      ? parsed.timeZone
+      : DEFAULT_SETTINGS.timeZone;
+    const parsedLeadDays = Number(parsed.reminderLeadDays);
+    const reminderLeadDays = SUPPORTED_REMINDER_LEAD_DAYS.has(parsedLeadDays)
+      ? parsedLeadDays
+      : DEFAULT_SETTINGS.reminderLeadDays;
+
+    return { locale, currency, timeZone, reminderLeadDays };
+  } catch {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
 export function loadTransactions() {
   return safeParseTransactions(localStorage.getItem(STORAGE_KEY));
 }
@@ -80,4 +127,12 @@ export function loadReminders() {
 
 export function saveReminders(reminders) {
   localStorage.setItem(REMINDER_STORAGE_KEY, JSON.stringify(reminders));
+}
+
+export function loadSettings() {
+  return safeParseSettings(localStorage.getItem(SETTINGS_STORAGE_KEY));
+}
+
+export function saveSettings(settings) {
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
 }

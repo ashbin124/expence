@@ -6,6 +6,32 @@ function escapeHTML(value) {
 
 function getVisibleTransactions(state) {
   const query = state.search.trim().toLowerCase();
+  const advanced = state.advancedFilters || {};
+  const categoryFilter = advanced.category || "all";
+
+  let dateFrom = advanced.dateFrom || "";
+  let dateTo = advanced.dateTo || "";
+
+  let minAmount =
+    typeof advanced.minAmount === "number" && Number.isFinite(advanced.minAmount)
+      ? advanced.minAmount
+      : null;
+  let maxAmount =
+    typeof advanced.maxAmount === "number" && Number.isFinite(advanced.maxAmount)
+      ? advanced.maxAmount
+      : null;
+
+  if (dateFrom && dateTo && dateFrom > dateTo) {
+    const swapValue = dateFrom;
+    dateFrom = dateTo;
+    dateTo = swapValue;
+  }
+
+  if (minAmount !== null && maxAmount !== null && minAmount > maxAmount) {
+    const swapValue = minAmount;
+    minAmount = maxAmount;
+    maxAmount = swapValue;
+  }
 
   return state.transactions.filter((item) => {
     const passesFilter =
@@ -14,6 +40,14 @@ function getVisibleTransactions(state) {
       (state.filter === "expense" && item.amount < 0);
 
     if (!passesFilter) return false;
+    if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
+    if (dateFrom && item.date < dateFrom) return false;
+    if (dateTo && item.date > dateTo) return false;
+
+    const absoluteAmount = Math.abs(item.amount);
+    if (minAmount !== null && absoluteAmount < minAmount) return false;
+    if (maxAmount !== null && absoluteAmount > maxAmount) return false;
+
     if (!query) return true;
 
     return (
@@ -65,9 +99,25 @@ export function renderSummary({ transactions, elements, formatCurrency }) {
 }
 
 export function renderTransactions({ state, elements, formatCurrency, locale }) {
+  const sortBy = state.sortBy || "date_desc";
+
   const visible = getVisibleTransactions(state)
     .slice()
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+    .sort((a, b) => {
+      if (sortBy === "date_asc") {
+        return new Date(a.date) - new Date(b.date);
+      }
+
+      if (sortBy === "amount_desc") {
+        return Math.abs(b.amount) - Math.abs(a.amount);
+      }
+
+      if (sortBy === "amount_asc") {
+        return Math.abs(a.amount) - Math.abs(b.amount);
+      }
+
+      return new Date(b.date) - new Date(a.date);
+    });
 
   if (visible.length === 0) {
     elements.listEl.innerHTML = '<li class="empty">No transactions match this view.</li>';
