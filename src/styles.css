@@ -193,9 +193,11 @@ h1 {
 .list-wrap {
   border: 1px solid var(--line);
   border-radius: 14px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: #fffcf8;
   min-height: 280px;
+  max-height: 460px;
 }
 
 .transaction-list {
@@ -558,5 +560,9 @@ select:focus {
   .budget-stats {
     flex-direction: column;
     gap: 4px;
+  }
+
+  .list-wrap {
+    max-height: 360px;
   }
 }
