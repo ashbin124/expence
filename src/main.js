@@ -90,6 +90,29 @@ function readErrorMessage(error, fallbackMessage) {
   return fallbackMessage;
 }
 
+function toFriendlyAuthErrorMessage(error, fallbackMessage) {
+  const raw = readErrorMessage(error, fallbackMessage);
+  const normalized = raw.toLowerCase();
+
+  if (normalized.includes("email not confirmed")) {
+    return "Email not verified yet. Check your inbox, verify email, then log in.";
+  }
+
+  if (normalized.includes("invalid login credentials")) {
+    return "Invalid email or password.";
+  }
+
+  if (normalized.includes("user already registered")) {
+    return "Account already exists. Use Log In.";
+  }
+
+  if (normalized.includes("signup is disabled")) {
+    return "Sign up is disabled in Supabase settings.";
+  }
+
+  return raw;
+}
+
 function formatCurrency(value) {
   return new Intl.NumberFormat(APP_LOCALE, {
     style: "currency",
@@ -419,7 +442,7 @@ async function handleSignUp() {
     }
 
     setAuthStatus(
-      "Sign-up success. Verify your email, then log in to start cloud sync.",
+      "Sign-up success. Verify email, then log in to enable cloud sync.",
       "local",
     );
   });
@@ -663,7 +686,7 @@ authForm.addEventListener("submit", async (event) => {
   try {
     await handleLogin();
   } catch (error) {
-    showAuthError(readErrorMessage(error, "Unable to log in right now."));
+    showAuthError(toFriendlyAuthErrorMessage(error, "Unable to log in right now."));
   }
 });
 
@@ -673,7 +696,7 @@ signupBtn.addEventListener("click", async () => {
   try {
     await handleSignUp();
   } catch (error) {
-    showAuthError(readErrorMessage(error, "Unable to sign up right now."));
+    showAuthError(toFriendlyAuthErrorMessage(error, "Unable to sign up right now."));
   }
 });
 
@@ -683,7 +706,7 @@ logoutBtn.addEventListener("click", async () => {
   try {
     await handleLogout();
   } catch (error) {
-    showAuthError(readErrorMessage(error, "Unable to log out right now."));
+    showAuthError(toFriendlyAuthErrorMessage(error, "Unable to log out right now."));
   }
 });
 
