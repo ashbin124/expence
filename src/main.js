@@ -7,9 +7,7 @@ import {
   fetchTransactionsFromCloud,
   getCurrentUser,
   saveCloudBudget,
-  signInWithEmail,
   signOutCurrentUser,
-  signUpWithEmail,
   updateCloudTransaction,
 } from "./cloud.js";
 import { isSupabaseConfigured, supabase } from "./supabase.js";
@@ -50,20 +48,15 @@ const budgetForm = document.getElementById("budgetForm");
 const budgetInput = document.getElementById("budgetLimit");
 const filterButtons = document.querySelectorAll(".filter-btn");
 
-const authForm = document.getElementById("authForm");
 const authStatusEl = document.getElementById("authStatus");
+const authNoticeEl = document.getElementById("authNotice");
 const authErrorEl = document.getElementById("authError");
-const authToggleBtn = document.getElementById("authToggleBtn");
-const authLoggedInActionsEl = document.getElementById("authLoggedInActions");
-const authEmailInput = document.getElementById("authEmail");
-const authPasswordInput = document.getElementById("authPassword");
-const loginBtn = document.getElementById("loginBtn");
-const signupBtn = document.getElementById("signupBtn");
+const openAuthPageBtn = document.getElementById("openAuthPageBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const budgetSubmitBtn = budgetForm.querySelector('button[type="submit"]');
 
 let mainLoadingCount = 0;
-let isAuthFormExpanded = false;
+const AUTH_FLASH_KEY = "expense-tracker-auth-flash";
 
 const elements = {
   listEl: document.getElementById("transactionList"),
@@ -88,29 +81,6 @@ function readErrorMessage(error, fallbackMessage) {
   }
 
   return fallbackMessage;
-}
-
-function toFriendlyAuthErrorMessage(error, fallbackMessage) {
-  const raw = readErrorMessage(error, fallbackMessage);
-  const normalized = raw.toLowerCase();
-
-  if (normalized.includes("email not confirmed")) {
-    return "Email not verified yet. Check your inbox, verify email, then log in.";
-  }
-
-  if (normalized.includes("invalid login credentials")) {
-    return "Invalid email or password.";
-  }
-
-  if (normalized.includes("user already registered")) {
-    return "Account already exists. Use Log In.";
-  }
-
-  if (normalized.includes("signup is disabled")) {
-    return "Sign up is disabled in Supabase settings.";
-  }
-
-  return raw;
 }
 
 function formatCurrency(value) {
@@ -165,6 +135,22 @@ function clearAuthError() {
   showAuthError("");
 }
 
+function showAuthNotice(message) {
+  authNoticeEl.textContent = message;
+}
+
+function clearAuthNotice() {
+  showAuthNotice("");
+}
+
+function consumeAuthFlashMessage() {
+  const flash = localStorage.getItem(AUTH_FLASH_KEY);
+  if (!flash) return "";
+
+  localStorage.removeItem(AUTH_FLASH_KEY);
+  return flash;
+}
+
 function setAuthStatus(message, mode = "local") {
   authStatusEl.textContent = message;
   authStatusEl.classList.remove("auth-status-cloud", "auth-status-local");
@@ -174,31 +160,10 @@ function setAuthStatus(message, mode = "local") {
 }
 
 function setAuthControls({ configured, loggedIn, loading = false }) {
-  const locked = !configured;
-  const showLoginForm = configured && !loggedIn && isAuthFormExpanded;
-
-  if (locked || loggedIn) {
-    isAuthFormExpanded = false;
-  }
-
-  authForm.hidden = !showLoginForm;
-  authToggleBtn.hidden = !configured || loggedIn;
-  authLoggedInActionsEl.hidden = !configured || !loggedIn;
-
-  if (!authToggleBtn.hidden) {
-    authToggleBtn.textContent = showLoginForm ? "Hide Login Form" : "Connect Account";
-  }
-
-  authEmailInput.disabled = locked || loggedIn || loading;
-  authPasswordInput.disabled = locked || loggedIn || loading;
-
-  loginBtn.hidden = !showLoginForm;
-  signupBtn.hidden = !showLoginForm;
+  openAuthPageBtn.hidden = !configured || loggedIn;
   logoutBtn.hidden = !configured || !loggedIn;
 
-  authToggleBtn.disabled = loading;
-  loginBtn.disabled = loading || !showLoginForm;
-  signupBtn.disabled = loading || !showLoginForm;
+  openAuthPageBtn.disabled = loading;
   logoutBtn.disabled = loading;
 }
 
@@ -383,7 +348,6 @@ function subscribeToAuthChanges() {
     try {
       clearAuthError();
       await switchToCloudUser(sessionUser);
-      authPasswordInput.value = "";
     } catch (error) {
       showAuthError(readErrorMessage(error, "Session updated, but cloud sync failed."));
       switchToLocalMode("Session exists, but cloud sync failed. Using local mode.");
@@ -391,68 +355,10 @@ function subscribeToAuthChanges() {
   });
 }
 
-async function handleLogin() {
-  const email = authEmailInput.value.trim();
-  const password = authPasswordInput.value;
-
-  if (!email || !password) {
-    showAuthError("Email and password are required.");
-    return;
-  }
-
-  await runWithAuthLoading(async () => {
-    clearAuthError();
-
-    const data = await signInWithEmail(email, password);
-    const nextUser = data.user ?? null;
-
-    if (!nextUser) {
-      showAuthError("Login failed. Please try again.");
-      return;
-    }
-
-    await switchToCloudUser(nextUser);
-    authPasswordInput.value = "";
-  });
-}
-
-async function handleSignUp() {
-  const email = authEmailInput.value.trim();
-  const password = authPasswordInput.value;
-
-  if (!email || !password) {
-    showAuthError("Email and password are required.");
-    return;
-  }
-
-  if (password.length < 6) {
-    showAuthError("Password should be at least 6 characters.");
-    return;
-  }
-
-  await runWithAuthLoading(async () => {
-    clearAuthError();
-
-    const data = await signUpWithEmail(email, password);
-
-    if (data.session && data.user) {
-      await switchToCloudUser(data.user);
-      authPasswordInput.value = "";
-      return;
-    }
-
-    setAuthStatus(
-      "Sign-up success. Verify email, then log in to enable cloud sync.",
-      "local",
-    );
-  });
-}
-
 async function handleLogout() {
   await runWithAuthLoading(async () => {
     clearAuthError();
     await signOutCurrentUser();
-    authPasswordInput.value = "";
     switchToLocalMode("Logged out. Using local mode on this browser.");
   });
 }
@@ -661,43 +567,9 @@ budgetForm.addEventListener("submit", async (event) => {
   }
 });
 
-authToggleBtn.addEventListener("click", () => {
+openAuthPageBtn.addEventListener("click", () => {
   if (!isSupabaseConfigured || state.user) return;
-
-  isAuthFormExpanded = !isAuthFormExpanded;
-  clearAuthError();
-
-  setAuthControls({
-    configured: isSupabaseConfigured,
-    loggedIn: Boolean(state.user),
-    loading: false,
-  });
-
-  if (isAuthFormExpanded) {
-    authEmailInput.focus();
-  }
-});
-
-authForm.addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  if (!isSupabaseConfigured || state.user) return;
-
-  try {
-    await handleLogin();
-  } catch (error) {
-    showAuthError(toFriendlyAuthErrorMessage(error, "Unable to log in right now."));
-  }
-});
-
-signupBtn.addEventListener("click", async () => {
-  if (!isSupabaseConfigured || state.user) return;
-
-  try {
-    await handleSignUp();
-  } catch (error) {
-    showAuthError(toFriendlyAuthErrorMessage(error, "Unable to sign up right now."));
-  }
+  window.location.href = "./auth.html";
 });
 
 logoutBtn.addEventListener("click", async () => {
@@ -706,16 +578,22 @@ logoutBtn.addEventListener("click", async () => {
   try {
     await handleLogout();
   } catch (error) {
-    showAuthError(toFriendlyAuthErrorMessage(error, "Unable to log out right now."));
+    showAuthError(readErrorMessage(error, "Unable to log out right now."));
   }
 });
 
 (async function init() {
   loadLocalDataIntoState();
   setSelectedType("expense");
+  clearAuthNotice();
+  const authFlashMessage = consumeAuthFlashMessage();
+
+  if (authFlashMessage) {
+    showAuthNotice(authFlashMessage);
+  }
 
   if (!isSupabaseConfigured) {
-    setAuthStatus("Local mode. Add Supabase keys to enable cloud sync.", "local");
+    setAuthStatus("Local mode. Configure Supabase to enable cloud sync.", "local");
     setAuthControls({ configured: false, loggedIn: false, loading: false });
     renderAll();
     return;
@@ -729,7 +607,7 @@ logoutBtn.addEventListener("click", async () => {
     const user = await getCurrentUser();
 
     if (!user) {
-      switchToLocalMode("Cloud available. Log in to sync your data.");
+      switchToLocalMode("Cloud available. Open auth page to log in and sync data.");
       return;
     }
 

@@ -82,6 +82,19 @@ h1 {
   gap: 18px;
 }
 
+.auth-shell {
+  max-width: 560px;
+}
+
+.auth-card {
+  max-width: 560px;
+}
+
+.auth-page-actions {
+  display: grid;
+  gap: 8px;
+}
+
 .card {
   background: var(--paper);
   border-radius: var(--radius);
@@ -371,6 +384,13 @@ h1 {
   margin-bottom: 10px;
 }
 
+.auth-notice {
+  margin: 0 0 10px;
+  font-size: 0.83rem;
+  color: var(--income);
+  min-height: 1.2em;
+}
+
 .auth-toggle {
   margin-bottom: 10px;
 }
@@ -383,14 +403,8 @@ h1 {
   color: var(--muted);
 }
 
-.auth-actions {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
 .auth-logged-in-actions {
-  margin-top: 8px;
+  margin-bottom: 8px;
 }
 
 .auth-error {
@@ -596,9 +610,5 @@ select:focus {
   .budget-stats {
     flex-direction: column;
     gap: 4px;
-  }
-
-  .auth-actions {
-    grid-template-columns: 1fr;
   }
 }

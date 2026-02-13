@@ -11,8 +11,9 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="./assets/index-Dh2iC9tU.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-C87dKT_2.css">
+    <script type="module" crossorigin src="./assets/main-DkiovhY2.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/cloud-DzDsU7cm.js">
+    <link rel="stylesheet" crossorigin href="./assets/cloud-z1d94dfM.css">
   </head>
   <body>
     <main class="shell">
@@ -77,40 +78,21 @@
           <section class="auth-panel" aria-label="Account sync">
             <h3 class="section-title">Account Sync</h3>
             <p id="authStatus" class="hint auth-status">
-              Local mode. Add Supabase keys to enable cloud sync.
+              Local mode. Configure Supabase to enable cloud sync.
             </p>
-            <button id="authToggleBtn" class="ghost-btn auth-toggle" type="button">
-              Connect Account
+            <div
+              id="authNotice"
+              class="auth-notice"
+              role="status"
+              aria-live="polite"
+            ></div>
+            <button id="openAuthPageBtn" class="ghost-btn auth-toggle" type="button">
+              Open Login / Sign Up Page
             </button>
-            <form id="authForm" novalidate hidden>
-              <div class="field">
-                <label for="authEmail">Email</label>
-                <input
-                  id="authEmail"
-                  name="authEmail"
-                  type="email"
-                  autocomplete="email"
-                  placeholder="you@example.com"
-                />
-              </div>
-              <div class="field">
-                <label for="authPassword">Password</label>
-                <input
-                  id="authPassword"
-                  name="authPassword"
-                  type="password"
-                  autocomplete="current-password"
-                  minlength="6"
-                  placeholder="At least 6 characters"
-                />
-              </div>
-              <div class="auth-actions">
-                <button id="loginBtn" class="ghost-btn" type="submit">Log In</button>
-                <button id="signupBtn" class="ghost-btn" type="button">Sign Up</button>
-              </div>
-            </form>
-            <div id="authLoggedInActions" class="auth-logged-in-actions" hidden>
-              <button id="logoutBtn" class="ghost-btn" type="button">Log Out</button>
+            <div class="auth-logged-in-actions">
+              <button id="logoutBtn" class="ghost-btn" type="button" hidden>
+                Log Out
+              </button>
             </div>
             <div
               id="authError"
