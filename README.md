@@ -1,5 +1,7 @@
 # Expense Tracker (INR)
 
+[![CI](https://github.com/ashbin124/expence/actions/workflows/ci.yml/badge.svg)](https://github.com/ashbin124/expence/actions/workflows/ci.yml)
+
 A fast daily-use expense tracker built with HTML, CSS, and JavaScript.
 
 ## Stack
@@ -18,6 +20,7 @@ A fast daily-use expense tracker built with HTML, CSS, and JavaScript.
 - Monthly overview and budget tracking
 - India locale defaults (`en-IN`, `INR`, `Asia/Kolkata`)
 - Local-only storage in browser `localStorage`
+- Backup and restore with JSON export/import
 - GitHub Pages ready build output in `docs/`
 
 ## Setup

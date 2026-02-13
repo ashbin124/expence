@@ -362,6 +362,38 @@ h1 {
   background: #fdf8f1;
 }
 
+.backup-panel {
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  background: #f7efe7;
+}
+
+.backup-hint {
+  margin-bottom: 10px;
+}
+
+.backup-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.backup-notice {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  min-height: 1.2em;
+  color: var(--muted);
+}
+
+.backup-notice-success {
+  color: var(--income);
+}
+
+.backup-notice-error {
+  color: var(--expense);
+}
+
 .budget-stats {
   display: flex;
   justify-content: space-between;

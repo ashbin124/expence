@@ -11,8 +11,8 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="./assets/main-D4htJ36v.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/main-TxbvTdOd.css">
+    <script type="module" crossorigin src="./assets/main-CoYXUaO5.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/main-CgjGN-SI.css">
   </head>
   <body>
     <main class="shell">
@@ -76,7 +76,36 @@
         <aside class="card">
           <section aria-label="Storage mode">
             <h3 class="section-title">Storage Mode</h3>
-            <p class="hint">Local mode only. Data is stored in this browser on this device.</p>
+            <p class="hint">
+              Local mode only. Data is stored in this browser on this device.
+            </p>
+          </section>
+
+          <section class="backup-panel" aria-label="Data backup">
+            <h3 class="section-title">Data Backup</h3>
+            <p class="hint backup-hint">
+              Export JSON backup, or import a previous backup file.
+            </p>
+            <div class="backup-actions">
+              <button id="exportDataBtn" class="ghost-btn" type="button">
+                Export Backup
+              </button>
+              <button id="importDataBtn" class="ghost-btn" type="button">
+                Import Backup
+              </button>
+              <input
+                id="importDataInput"
+                type="file"
+                accept=".json,application/json"
+                hidden
+              />
+            </div>
+            <p
+              id="backupNotice"
+              class="backup-notice"
+              role="status"
+              aria-live="polite"
+            ></p>
           </section>
 
           <h2 id="formTitle" class="form-title">Quick Add</h2>

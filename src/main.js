@@ -32,10 +32,15 @@ const searchInput = document.getElementById("searchInput");
 const clearAllBtn = document.getElementById("clearAllBtn");
 const budgetForm = document.getElementById("budgetForm");
 const budgetInput = document.getElementById("budgetLimit");
+const exportDataBtn = document.getElementById("exportDataBtn");
+const importDataBtn = document.getElementById("importDataBtn");
+const importDataInput = document.getElementById("importDataInput");
+const backupNoticeEl = document.getElementById("backupNotice");
 const filterButtons = document.querySelectorAll(".filter-btn");
 const budgetSubmitBtn = budgetForm.querySelector('button[type="submit"]');
 
 let mainLoadingCount = 0;
+const BACKUP_VERSION = 1;
 
 const elements = {
   listEl: document.getElementById("transactionList"),
@@ -102,12 +107,33 @@ function clearError() {
   showError("");
 }
 
+function showBackupNotice(message, type = "info") {
+  backupNoticeEl.textContent = message;
+  backupNoticeEl.className = "backup-notice";
+
+  if (type === "success") {
+    backupNoticeEl.classList.add("backup-notice-success");
+    return;
+  }
+
+  if (type === "error") {
+    backupNoticeEl.classList.add("backup-notice-error");
+  }
+}
+
+function clearBackupNotice() {
+  showBackupNotice("");
+}
+
 function setMainControlsDisabled(disabled) {
   submitBtn.disabled = disabled;
   cancelEditBtn.disabled = disabled;
   clearAllBtn.disabled = disabled;
   budgetInput.disabled = disabled;
   budgetSubmitBtn.disabled = disabled;
+  exportDataBtn.disabled = disabled;
+  importDataBtn.disabled = disabled;
+  importDataInput.disabled = disabled;
 
   amountInput.disabled = disabled;
   titleInput.disabled = disabled;
@@ -142,6 +168,132 @@ async function runWithMainLoading(task) {
 
 function syncBudgetInput() {
   budgetInput.value = state.budgetLimit > 0 ? String(state.budgetLimit) : "";
+}
+
+function isValidTransactionRecord(item) {
+  if (!item || typeof item !== "object") return false;
+
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+  return (
+    typeof item.id === "string" &&
+    typeof item.title === "string" &&
+    typeof item.amount === "number" &&
+    Number.isFinite(item.amount) &&
+    typeof item.category === "string" &&
+    typeof item.date === "string" &&
+    dateRegex.test(item.date)
+  );
+}
+
+function normalizeImportedTransactions(records) {
+  return records.filter(isValidTransactionRecord).map((item) => ({
+    id: item.id,
+    title: item.title,
+    amount: item.amount,
+    category: item.category,
+    date: item.date,
+  }));
+}
+
+function parseBackupData(rawText) {
+  let parsed;
+
+  try {
+    parsed = JSON.parse(rawText);
+  } catch {
+    throw new Error("Invalid JSON file.");
+  }
+
+  if (Array.isArray(parsed)) {
+    const transactions = normalizeImportedTransactions(parsed);
+
+    return {
+      transactions,
+      budgetLimit: 0,
+      skippedCount: parsed.length - transactions.length,
+    };
+  }
+
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("Unsupported backup format.");
+  }
+
+  if (!Array.isArray(parsed.transactions)) {
+    throw new Error("Backup file does not contain a transactions list.");
+  }
+
+  const transactions = normalizeImportedTransactions(parsed.transactions);
+  const skippedCount = parsed.transactions.length - transactions.length;
+
+  const parsedBudget = Number(parsed.budgetLimit);
+  const budgetLimit =
+    Number.isFinite(parsedBudget) && parsedBudget > 0 ? parsedBudget : 0;
+
+  return { transactions, budgetLimit, skippedCount };
+}
+
+function buildBackupData() {
+  return {
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    budgetLimit: state.budgetLimit,
+    transactions: state.transactions,
+  };
+}
+
+function downloadBackupJson(data) {
+  const prettyJson = JSON.stringify(data, null, 2);
+  const blob = new Blob([prettyJson], { type: "application/json" });
+  const objectUrl = URL.createObjectURL(blob);
+
+  const downloadAnchor = document.createElement("a");
+  const datePart = getISODateInTimeZone(APP_TIMEZONE, APP_LOCALE);
+  downloadAnchor.href = objectUrl;
+  downloadAnchor.download = `expense-tracker-backup-${datePart}.json`;
+  document.body.append(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+
+  URL.revokeObjectURL(objectUrl);
+}
+
+async function handleImportBackupFile(file) {
+  if (!file) return;
+
+  clearError();
+
+  try {
+    await runWithMainLoading(async () => {
+      const rawText = await file.text();
+      const imported = parseBackupData(rawText);
+
+      state.transactions = imported.transactions;
+      state.budgetLimit = imported.budgetLimit;
+
+      saveTransactions(state.transactions);
+      saveBudget(state.budgetLimit);
+
+      syncBudgetInput();
+      renderAll();
+      resetForm();
+
+      if (imported.skippedCount > 0) {
+        showBackupNotice(
+          `Backup imported with ${imported.skippedCount} invalid entr${
+            imported.skippedCount === 1 ? "y" : "ies"
+          } skipped.`,
+          "success",
+        );
+      } else {
+        showBackupNotice("Backup imported successfully.", "success");
+      }
+    });
+  } catch (error) {
+    showBackupNotice(readErrorMessage(error, "Unable to import backup."), "error");
+  } finally {
+    importDataInput.value = "";
+  }
 }
 
 function setEditMode(transaction) {
@@ -388,8 +540,32 @@ budgetForm.addEventListener("submit", async (event) => {
   }
 });
 
+exportDataBtn.addEventListener("click", () => {
+  clearError();
+
+  try {
+    const backupData = buildBackupData();
+    downloadBackupJson(backupData);
+    showBackupNotice("Backup downloaded successfully.", "success");
+  } catch (error) {
+    showBackupNotice(readErrorMessage(error, "Unable to export backup."), "error");
+  }
+});
+
+importDataBtn.addEventListener("click", () => {
+  clearError();
+  clearBackupNotice();
+  importDataInput.click();
+});
+
+importDataInput.addEventListener("change", async () => {
+  const selectedFile = importDataInput.files?.[0];
+  await handleImportBackupFile(selectedFile);
+});
+
 (function init() {
   loadLocalDataIntoState();
   setSelectedType("expense");
+  clearBackupNotice();
   renderAll();
 })();
