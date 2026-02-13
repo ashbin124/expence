@@ -59,14 +59,23 @@ const reminderSubmitBtn = reminderForm?.querySelector('button[type="submit"]');
 const undoToastEl = document.getElementById("undoToast");
 const undoToastTextEl = document.getElementById("undoToastText");
 const undoDeleteBtn = document.getElementById("undoDeleteBtn");
+const mobileViewButtons = document.querySelectorAll("[data-mobile-view-btn]");
+const mobileViewSections = document.querySelectorAll("[data-mobile-view]");
+const mobileCards = document.querySelectorAll("[data-mobile-card]");
+const mobileViewport = window.matchMedia("(max-width: 620px)");
 const filterButtons = document.querySelectorAll(".filter-btn");
 const budgetSubmitBtn = budgetForm.querySelector('button[type="submit"]');
 
 let mainLoadingCount = 0;
 const BACKUP_VERSION = 2;
+const MOBILE_VIEW_STORAGE_KEY = "expense-tracker-mobile-view-v1";
+const MOBILE_VIEWS = new Set(["transactions", "add", "insights", "reminders"]);
 let deferredInstallPrompt = null;
 let pendingDeletedTransaction = null;
 let undoDeleteTimer = null;
+const savedMobileView = localStorage.getItem(MOBILE_VIEW_STORAGE_KEY);
+let activeMobileView =
+  savedMobileView && MOBILE_VIEWS.has(savedMobileView) ? savedMobileView : "transactions";
 
 const elements = {
   listEl: document.getElementById("transactionList"),
@@ -113,6 +122,73 @@ function createId() {
     return crypto.randomUUID();
   }
   return String(Date.now() + Math.random());
+}
+
+function isMobileViewport() {
+  return mobileViewport.matches;
+}
+
+function applyMobileViewState() {
+  const isMobile = isMobileViewport();
+  const isLedgerView =
+    activeMobileView === "transactions" || activeMobileView === "insights";
+
+  mobileCards.forEach((card) => {
+    const cardType = card.dataset.mobileCard;
+    const shouldShow =
+      !isMobile || (isLedgerView ? cardType === "ledger" : cardType === "manage");
+    card.classList.toggle("mobile-view-hidden", !shouldShow);
+  });
+
+  mobileViewSections.forEach((section) => {
+    const sectionView = section.dataset.mobileView;
+    const isCurrentView = sectionView === activeMobileView;
+    section.classList.toggle("mobile-view-hidden", isMobile && !isCurrentView);
+  });
+
+  mobileViewButtons.forEach((button) => {
+    const isCurrentView = button.dataset.mobileViewBtn === activeMobileView;
+    button.classList.toggle("active", isCurrentView);
+    button.setAttribute("aria-pressed", String(isCurrentView));
+    button.setAttribute("aria-current", isCurrentView ? "page" : "false");
+  });
+}
+
+function setMobileView(nextView, options = {}) {
+  if (!MOBILE_VIEWS.has(nextView)) return;
+  const { persist = true } = options;
+
+  activeMobileView = nextView;
+
+  if (persist) {
+    localStorage.setItem(MOBILE_VIEW_STORAGE_KEY, nextView);
+  }
+
+  applyMobileViewState();
+}
+
+function setupMobileViewNavigation() {
+  if (mobileViewButtons.length === 0 || mobileViewSections.length === 0) return;
+
+  mobileViewButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextView = button.dataset.mobileViewBtn;
+      if (!nextView) return;
+      setMobileView(nextView);
+    });
+  });
+
+  if (typeof mobileViewport.addEventListener === "function") {
+    mobileViewport.addEventListener("change", () => {
+      applyMobileViewState();
+    });
+  } else if (typeof mobileViewport.addListener === "function") {
+    mobileViewport.addListener(() => {
+      applyMobileViewState();
+    });
+  }
+
+  applyMobileViewState();
 }
 
 function getSelectedType() {
@@ -474,6 +550,10 @@ function setMainControlsDisabled(disabled) {
   if (installAppBtn) {
     installAppBtn.disabled = disabled;
   }
+
+  mobileViewButtons.forEach((button) => {
+    button.disabled = disabled;
+  });
 }
 
 async function runWithMainLoading(task) {
@@ -794,6 +874,10 @@ form.addEventListener("submit", async (event) => {
       saveTransactions(state.transactions);
       renderAll();
       resetForm();
+
+      if (isMobileViewport()) {
+        setMobileView("transactions", { persist: false });
+      }
     });
   } catch (error) {
     showError(readErrorMessage(error, "Unable to save transaction right now."));
@@ -839,6 +923,9 @@ elements.listEl.addEventListener("click", async (event) => {
     if (!transaction) return;
 
     setEditMode(transaction);
+    if (isMobileViewport()) {
+      setMobileView("add", { persist: false });
+    }
     clearError();
     amountInput.focus();
   }
@@ -1088,6 +1175,7 @@ if (undoDeleteBtn) {
   updateReminderAlertButton();
   registerServiceWorker();
   setupInstallPrompt();
+  setupMobileViewNavigation();
   triggerDueReminderNotifications();
   renderAll();
 })();

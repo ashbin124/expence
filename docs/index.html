@@ -19,8 +19,8 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="./assets/main-BEEWYZiE.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/main-COdn22Qi.css">
+    <script type="module" crossorigin src="./assets/main-CBfFA0ru.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/main-B8WRuh7T.css">
   </head>
   <body>
     <main class="shell">
@@ -33,8 +33,8 @@
       </section>
 
       <section class="content">
-        <article class="card">
-          <div class="summary-grid">
+        <article class="card" data-mobile-card="ledger">
+          <div class="summary-grid" data-mobile-view="transactions">
             <div class="summary-box">
               <div class="summary-label">Balance</div>
               <div id="balance" class="summary-value">₹0.00</div>
@@ -56,7 +56,11 @@
             </div>
           </div>
 
-          <div class="tool-row" aria-label="Transaction controls">
+          <div
+            class="tool-row"
+            aria-label="Transaction controls"
+            data-mobile-view="transactions"
+          >
             <button class="filter-btn active" type="button" data-filter="all">All</button>
             <button class="filter-btn" type="button" data-filter="income">Income</button>
             <button class="filter-btn" type="button" data-filter="expense">
@@ -71,23 +75,31 @@
             <button id="clearAllBtn" class="clear-btn" type="button">Clear All</button>
           </div>
 
-          <div class="list-wrap">
+          <div class="list-wrap" data-mobile-view="transactions">
             <ul id="transactionList" class="transaction-list" aria-live="polite"></ul>
           </div>
 
-          <section class="monthly-section" aria-label="Monthly overview">
+          <section
+            class="monthly-section"
+            aria-label="Monthly overview"
+            data-mobile-view="insights"
+          >
             <h3 class="section-title">Monthly Overview</h3>
             <div id="monthlyOverview" class="monthly-overview"></div>
           </section>
 
-          <section class="insight-section" aria-label="Insights dashboard">
+          <section
+            class="insight-section"
+            aria-label="Insights dashboard"
+            data-mobile-view="insights"
+          >
             <h3 class="section-title">Insights</h3>
             <div id="insightGrid" class="insight-grid"></div>
           </section>
         </article>
 
-        <aside class="card">
-          <section class="install-panel" aria-label="Install app">
+        <aside class="card" data-mobile-card="manage">
+          <section class="install-panel" aria-label="Install app" data-mobile-view="add">
             <h3 class="section-title">Install App</h3>
             <p id="installAppHint" class="hint install-hint">
               Install option appears automatically when supported by your browser.
@@ -108,75 +120,81 @@
             </button>
           </section>
 
-          <h2 id="formTitle" class="form-title">Quick Add</h2>
-          <p class="hint">
-            Pick type, enter amount, and save. Note is optional, date auto-uses today.
-          </p>
-          <form id="transactionForm" novalidate>
-            <div class="field">
-              <label>Type</label>
-              <div class="type-toggle" role="radiogroup" aria-label="Transaction type">
-                <label class="type-pill">
-                  <input type="radio" name="txType" value="expense" checked />
-                  <span>Expense</span>
-                </label>
-                <label class="type-pill">
-                  <input type="radio" name="txType" value="income" />
-                  <span>Income</span>
-                </label>
+          <section class="quick-add-panel" data-mobile-view="add">
+            <h2 id="formTitle" class="form-title">Quick Add</h2>
+            <p class="hint">
+              Pick type, enter amount, and save. Note is optional, date auto-uses today.
+            </p>
+            <form id="transactionForm" novalidate>
+              <div class="field">
+                <label>Type</label>
+                <div class="type-toggle" role="radiogroup" aria-label="Transaction type">
+                  <label class="type-pill">
+                    <input type="radio" name="txType" value="expense" checked />
+                    <span>Expense</span>
+                  </label>
+                  <label class="type-pill">
+                    <input type="radio" name="txType" value="income" />
+                    <span>Income</span>
+                  </label>
+                </div>
               </div>
-            </div>
 
-            <div class="field">
-              <label for="amount">Amount (INR)</label>
-              <input
-                id="amount"
-                name="amount"
-                type="number"
-                step="0.01"
-                required
-                placeholder="e.g. 250"
-              />
-              <div class="quick-amounts" aria-label="Quick amounts">
-                <button class="quick-amount-btn" type="button" data-amount="100">
-                  100
+              <div class="field">
+                <label for="amount">Amount (INR)</label>
+                <input
+                  id="amount"
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  required
+                  placeholder="e.g. 250"
+                />
+                <div class="quick-amounts" aria-label="Quick amounts">
+                  <button class="quick-amount-btn" type="button" data-amount="100">
+                    100
+                  </button>
+                  <button class="quick-amount-btn" type="button" data-amount="500">
+                    500
+                  </button>
+                  <button class="quick-amount-btn" type="button" data-amount="1000">
+                    1000
+                  </button>
+                  <button class="quick-amount-btn" type="button" data-amount="2000">
+                    2000
+                  </button>
+                </div>
+              </div>
+
+              <div class="field">
+                <label for="title">Note (optional)</label>
+                <input
+                  id="title"
+                  name="title"
+                  type="text"
+                  maxlength="50"
+                  placeholder="e.g. Lunch"
+                />
+              </div>
+
+              <div class="form-actions">
+                <button id="submitBtn" class="submit-btn" type="submit">
+                  Save Transaction
                 </button>
-                <button class="quick-amount-btn" type="button" data-amount="500">
-                  500
-                </button>
-                <button class="quick-amount-btn" type="button" data-amount="1000">
-                  1000
-                </button>
-                <button class="quick-amount-btn" type="button" data-amount="2000">
-                  2000
+                <button id="cancelEditBtn" class="ghost-btn" type="button" hidden>
+                  Cancel Edit
                 </button>
               </div>
-            </div>
 
-            <div class="field">
-              <label for="title">Note (optional)</label>
-              <input
-                id="title"
-                name="title"
-                type="text"
-                maxlength="50"
-                placeholder="e.g. Lunch"
-              />
-            </div>
+              <div id="error" class="error" role="status" aria-live="polite"></div>
+            </form>
+          </section>
 
-            <div class="form-actions">
-              <button id="submitBtn" class="submit-btn" type="submit">
-                Save Transaction
-              </button>
-              <button id="cancelEditBtn" class="ghost-btn" type="button" hidden>
-                Cancel Edit
-              </button>
-            </div>
-
-            <div id="error" class="error" role="status" aria-live="polite"></div>
-          </form>
-
-          <section class="budget-panel" aria-label="Monthly budget">
+          <section
+            class="budget-panel"
+            aria-label="Monthly budget"
+            data-mobile-view="add"
+          >
             <h3 class="section-title">Monthly Budget</h3>
             <form id="budgetForm" novalidate>
               <div class="field">
@@ -204,7 +222,11 @@
             </p>
           </section>
 
-          <section class="reminder-panel" aria-label="Bill reminders">
+          <section
+            class="reminder-panel"
+            aria-label="Bill reminders"
+            data-mobile-view="reminders"
+          >
             <h3 class="section-title">Bill Reminders</h3>
             <p class="hint">
               Track upcoming due dates and log paid bills quickly as expenses.
@@ -255,7 +277,11 @@
             <ul id="reminderList" class="reminder-list" aria-live="polite"></ul>
           </section>
 
-          <details class="more-panel" aria-label="More options">
+          <details
+            class="more-panel"
+            aria-label="More options"
+            data-mobile-view="reminders"
+          >
             <summary class="more-trigger" aria-label="More options" title="More options">
               <span aria-hidden="true">...</span>
             </summary>
@@ -299,6 +325,23 @@
         </aside>
       </section>
     </main>
+
+    <nav class="mobile-nav" aria-label="Mobile navigation">
+      <button
+        class="mobile-nav-btn active"
+        type="button"
+        data-mobile-view-btn="transactions"
+      >
+        Transactions
+      </button>
+      <button class="mobile-nav-btn" type="button" data-mobile-view-btn="add">Add</button>
+      <button class="mobile-nav-btn" type="button" data-mobile-view-btn="insights">
+        Insights
+      </button>
+      <button class="mobile-nav-btn" type="button" data-mobile-view-btn="reminders">
+        Reminders
+      </button>
+    </nav>
 
     <div id="undoToast" class="undo-toast" role="status" aria-live="polite" hidden>
       <span id="undoToastText">Transaction deleted.</span>

@@ -820,6 +820,32 @@ select:focus {
   filter: brightness(1.05);
 }
 
+.mobile-view-hidden {
+  display: none !important;
+}
+
+.mobile-nav {
+  display: none;
+}
+
+.mobile-nav-btn {
+  border: 0;
+  background: transparent;
+  color: #61584f;
+  border-radius: 10px;
+  padding: 9px 6px;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+.mobile-nav-btn.active {
+  background: linear-gradient(130deg, var(--accent), #aa4523);
+  color: #fff;
+}
+
 [hidden] {
   display: none !important;
 }
@@ -831,12 +857,25 @@ select:focus {
 }
 
 @media (max-width: 620px) {
+  html,
   body {
-    padding: 14px 14px calc(18px + env(safe-area-inset-bottom, 0px));
+    height: 100%;
+  }
+
+  body {
+    padding: 14px 14px calc(96px + env(safe-area-inset-bottom, 0px));
+    overflow: hidden;
+  }
+
+  .shell {
+    height: 100%;
+    grid-template-rows: auto 1fr;
+    gap: 12px;
   }
 
   .content {
     gap: 14px;
+    min-height: 0;
   }
 
   .content > aside.card {
@@ -850,6 +889,22 @@ select:focus {
   .card,
   .header {
     padding: 16px;
+  }
+
+  .header {
+    overflow: hidden;
+  }
+
+  .header p {
+    margin-top: 8px;
+    font-size: 0.82rem;
+  }
+
+  .content > .card {
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   .summary-grid {
@@ -917,7 +972,7 @@ select:focus {
 
   .form-actions {
     position: sticky;
-    bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
     z-index: 11;
     padding-top: 8px;
     background: linear-gradient(180deg, rgba(255, 253, 250, 0), #fffdfa 48%);
@@ -951,8 +1006,27 @@ select:focus {
     max-height: 280px;
   }
 
+  .mobile-nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 35;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid #e4d8cc;
+    background: rgba(255, 252, 247, 0.96);
+    backdrop-filter: blur(6px);
+  }
+
+  .mobile-nav-btn {
+    min-height: 40px;
+  }
+
   .undo-toast {
-    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
     width: min(95vw, 420px);
   }
 }
