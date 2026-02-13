@@ -362,6 +362,18 @@ h1 {
   background: #fdf8f1;
 }
 
+.install-panel {
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  background: #f8f2ea;
+}
+
+.install-hint {
+  margin-bottom: 10px;
+}
+
 .backup-panel {
   margin-bottom: 14px;
   border: 1px solid var(--line);

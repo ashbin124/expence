@@ -36,11 +36,14 @@ const exportDataBtn = document.getElementById("exportDataBtn");
 const importDataBtn = document.getElementById("importDataBtn");
 const importDataInput = document.getElementById("importDataInput");
 const backupNoticeEl = document.getElementById("backupNotice");
+const installAppBtn = document.getElementById("installAppBtn");
+const installAppHintEl = document.getElementById("installAppHint");
 const filterButtons = document.querySelectorAll(".filter-btn");
 const budgetSubmitBtn = budgetForm.querySelector('button[type="submit"]');
 
 let mainLoadingCount = 0;
 const BACKUP_VERSION = 1;
+let deferredInstallPrompt = null;
 
 const elements = {
   listEl: document.getElementById("transactionList"),
@@ -133,6 +136,94 @@ function registerServiceWorker() {
   });
 }
 
+function isRunningStandalone() {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: fullscreen)").matches ||
+    window.navigator.standalone === true
+  );
+}
+
+function isIosSafari() {
+  const userAgent = window.navigator.userAgent.toLowerCase();
+  const isiOS = /iphone|ipad|ipod/.test(userAgent);
+  const isSafari =
+    /safari/.test(userAgent) && !/crios|fxios|edgios|chrome/.test(userAgent);
+
+  return isiOS && isSafari;
+}
+
+function updateInstallUi() {
+  if (!installAppBtn || !installAppHintEl) return;
+
+  if (isRunningStandalone()) {
+    installAppBtn.hidden = true;
+    installAppBtn.disabled = true;
+    installAppHintEl.textContent = "App is already installed on this device.";
+    return;
+  }
+
+  if (deferredInstallPrompt) {
+    installAppBtn.hidden = false;
+    installAppBtn.disabled = mainLoadingCount > 0;
+    installAppHintEl.textContent = "Tap Install App to add this app to your home screen.";
+    return;
+  }
+
+  installAppBtn.hidden = true;
+  installAppBtn.disabled = true;
+
+  if (isIosSafari()) {
+    installAppHintEl.textContent = "On iPhone, tap Share and choose Add to Home Screen.";
+    return;
+  }
+
+  installAppHintEl.textContent =
+    "Install option appears automatically when supported by your browser.";
+}
+
+function setupInstallPrompt() {
+  if (!installAppBtn || !installAppHintEl) return;
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    deferredInstallPrompt = event;
+    updateInstallUi();
+  });
+
+  window.addEventListener("appinstalled", () => {
+    deferredInstallPrompt = null;
+    updateInstallUi();
+  });
+
+  if (window.matchMedia) {
+    const standaloneMedia = window.matchMedia("(display-mode: standalone)");
+    standaloneMedia.addEventListener?.("change", () => {
+      updateInstallUi();
+    });
+  }
+
+  installAppBtn.addEventListener("click", async () => {
+    if (!deferredInstallPrompt) return;
+
+    installAppBtn.disabled = true;
+
+    try {
+      deferredInstallPrompt.prompt();
+      const choiceResult = await deferredInstallPrompt.userChoice;
+      if (choiceResult.outcome === "accepted") {
+        deferredInstallPrompt = null;
+      }
+    } catch (error) {
+      void error;
+    }
+
+    updateInstallUi();
+  });
+
+  updateInstallUi();
+}
+
 function setMainControlsDisabled(disabled) {
   submitBtn.disabled = disabled;
   cancelEditBtn.disabled = disabled;
@@ -158,6 +249,10 @@ function setMainControlsDisabled(disabled) {
   txTypeInputs.forEach((input) => {
     input.disabled = disabled;
   });
+
+  if (installAppBtn) {
+    installAppBtn.disabled = disabled || !deferredInstallPrompt;
+  }
 }
 
 async function runWithMainLoading(task) {
@@ -576,5 +671,6 @@ importDataInput.addEventListener("change", async () => {
   setSelectedType("expense");
   clearBackupNotice();
   registerServiceWorker();
+  setupInstallPrompt();
   renderAll();
 })();
