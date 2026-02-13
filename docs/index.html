@@ -216,5 +216,20 @@
       </section>
     </main>
 
+    <script>
+      (function redirectGitHubPagesSourceBuild() {
+        const isGitHubPages = window.location.hostname.endsWith("github.io");
+        const sourceCssLink = document.querySelector('link[href="/src/styles.css"]');
+        if (!isGitHubPages || !sourceCssLink) return;
+
+        const pathParts = window.location.pathname.split("/").filter(Boolean);
+        const repoName = pathParts[0];
+        if (!repoName) return;
+
+        const targetPath = `/${repoName}/docs/`;
+        const targetUrl = `${window.location.origin}${targetPath}${window.location.search}${window.location.hash}`;
+        window.location.replace(targetUrl);
+      })();
+    </script>
   </body>
 </html>
