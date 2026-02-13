@@ -73,31 +73,9 @@
         </article>
 
         <aside class="card">
-          <section class="auth-panel" aria-label="Account sync">
-            <h3 class="section-title">Account Sync</h3>
-            <p id="authStatus" class="hint auth-status">
-              Local mode. Configure Supabase to enable cloud sync.
-            </p>
-            <div
-              id="authNotice"
-              class="auth-notice"
-              role="status"
-              aria-live="polite"
-            ></div>
-            <button id="openAuthPageBtn" class="ghost-btn auth-toggle" type="button">
-              Open Login / Sign Up Page
-            </button>
-            <div class="auth-logged-in-actions">
-              <button id="logoutBtn" class="ghost-btn" type="button" hidden>
-                Log Out
-              </button>
-            </div>
-            <div
-              id="authError"
-              class="error auth-error"
-              role="status"
-              aria-live="polite"
-            ></div>
+          <section aria-label="Storage mode">
+            <h3 class="section-title">Storage Mode</h3>
+            <p class="hint">Local mode only. Data is stored in this browser on this device.</p>
           </section>
 
           <h2 id="formTitle" class="form-title">Quick Add</h2>

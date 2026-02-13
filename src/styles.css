@@ -82,19 +82,6 @@ h1 {
   gap: 18px;
 }
 
-.auth-shell {
-  max-width: 560px;
-}
-
-.auth-card {
-  max-width: 560px;
-}
-
-.auth-page-actions {
-  display: grid;
-  gap: 8px;
-}
-
 .card {
   background: var(--paper);
   border-radius: var(--radius);
@@ -370,45 +357,6 @@ h1 {
   border-radius: 14px;
   padding: 12px;
   background: #fdf8f1;
-}
-
-.auth-panel {
-  margin-bottom: 14px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 12px;
-  background: #f7efe7;
-}
-
-.auth-status {
-  margin-bottom: 10px;
-}
-
-.auth-notice {
-  margin: 0 0 10px;
-  font-size: 0.83rem;
-  color: var(--income);
-  min-height: 1.2em;
-}
-
-.auth-toggle {
-  margin-bottom: 10px;
-}
-
-.auth-status-cloud {
-  color: var(--income);
-}
-
-.auth-status-local {
-  color: var(--muted);
-}
-
-.auth-logged-in-actions {
-  margin-bottom: 8px;
-}
-
-.auth-error {
-  margin-top: 10px;
 }
 
 .budget-stats {
