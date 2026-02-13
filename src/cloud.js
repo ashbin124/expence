@@ -14,9 +14,9 @@ function normalizeTransaction(row) {
 
 export async function getCurrentUser() {
   const supabase = assertSupabaseConfigured();
-  const { data, error } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getSession();
   if (error) throw error;
-  return data.user;
+  return data.session?.user ?? null;
 }
 
 export async function signUpWithEmail(email, password) {
