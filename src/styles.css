@@ -374,12 +374,121 @@ h1 {
   margin-bottom: 10px;
 }
 
+#installAppBtn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  padding: 0;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-color: color-mix(in srgb, var(--accent) 28%, #d6c8bc);
+  background: linear-gradient(170deg, #fffdfb 0%, #f5ede4 100%);
+  color: #4f3f34;
+  line-height: 0;
+  box-shadow: 0 2px 8px rgba(87, 62, 45, 0.14);
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease,
+    border-color 0.14s ease,
+    color 0.14s ease;
+}
+
+#installAppBtn svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#installAppBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 48%, #d6c8bc);
+  color: #3f3027;
+  box-shadow: 0 5px 14px rgba(87, 62, 45, 0.18);
+}
+
+#installAppBtn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 48%, white);
+  outline-offset: 2px;
+}
+
+#installAppBtn:disabled {
+  opacity: 0.58;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
 .backup-panel {
-  margin-bottom: 14px;
+  margin: 0;
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 12px;
   background: #f7efe7;
+}
+
+.more-panel {
+  margin-top: 14px;
+}
+
+.more-trigger {
+  list-style: none;
+  width: 34px;
+  height: 34px;
+  margin-left: auto;
+  border: 1px solid #d6c8bc;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f1e8;
+  color: #5c524a;
+  cursor: pointer;
+  box-shadow: 0 1px 5px rgba(87, 62, 45, 0.1);
+}
+
+.more-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.more-trigger span {
+  font-size: 1.35rem;
+  line-height: 1;
+  transform: translateY(-2px);
+  letter-spacing: 0.05em;
+}
+
+.more-trigger:hover {
+  filter: brightness(0.99);
+}
+
+.more-trigger:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--accent) 42%, white);
+  outline-offset: 2px;
+}
+
+.more-panel[open] .more-trigger {
+  margin-bottom: 10px;
+}
+
+.more-content {
+  display: grid;
+  gap: 10px;
+}
+
+.storage-panel {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+  background: #f8f1e8;
+}
+
+.storage-panel .hint {
+  margin-bottom: 0;
 }
 
 .backup-hint {

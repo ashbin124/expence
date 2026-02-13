@@ -81,48 +81,25 @@
         </article>
 
         <aside class="card">
-          <section aria-label="Storage mode">
-            <h3 class="section-title">Storage Mode</h3>
-            <p class="hint">
-              Local mode only. Data is stored in this browser on this device.
-            </p>
-          </section>
-
           <section class="install-panel" aria-label="Install app">
             <h3 class="section-title">Install App</h3>
             <p id="installAppHint" class="hint install-hint">
               Install option appears automatically when supported by your browser.
             </p>
-            <button id="installAppBtn" class="ghost-btn" type="button" hidden>
-              Install App
+            <button
+              id="installAppBtn"
+              class="ghost-btn"
+              type="button"
+              hidden
+              aria-label="Install app"
+              title="Install app"
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                <path d="M12 3v10" />
+                <path d="m8 10 4 4 4-4" />
+                <path d="M5 16.5V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1.5" />
+              </svg>
             </button>
-          </section>
-
-          <section class="backup-panel" aria-label="Data backup">
-            <h3 class="section-title">Data Backup</h3>
-            <p class="hint backup-hint">
-              Export JSON backup, or import a previous backup file.
-            </p>
-            <div class="backup-actions">
-              <button id="exportDataBtn" class="ghost-btn" type="button">
-                Export Backup
-              </button>
-              <button id="importDataBtn" class="ghost-btn" type="button">
-                Import Backup
-              </button>
-              <input
-                id="importDataInput"
-                type="file"
-                accept=".json,application/json"
-                hidden
-              />
-            </div>
-            <p
-              id="backupNotice"
-              class="backup-notice"
-              role="status"
-              aria-live="polite"
-            ></p>
           </section>
 
           <h2 id="formTitle" class="form-title">Quick Add</h2>
@@ -220,6 +197,52 @@
               Set a monthly budget to track spending limits.
             </p>
           </section>
+
+          <details class="more-panel" aria-label="More options">
+            <summary
+              class="more-trigger"
+              aria-label="More options"
+              title="More options"
+            >
+              <span aria-hidden="true">...</span>
+            </summary>
+
+            <div class="more-content">
+              <section class="storage-panel" aria-label="Storage mode">
+                <h3 class="section-title">Storage Mode</h3>
+                <p class="hint">
+                  Local mode only. Data is stored in this browser on this device.
+                </p>
+              </section>
+
+              <section class="backup-panel" aria-label="Data backup">
+                <h3 class="section-title">Data Backup</h3>
+                <p class="hint backup-hint">
+                  Export JSON backup, or import a previous backup file.
+                </p>
+                <div class="backup-actions">
+                  <button id="exportDataBtn" class="ghost-btn" type="button">
+                    Export Backup
+                  </button>
+                  <button id="importDataBtn" class="ghost-btn" type="button">
+                    Import Backup
+                  </button>
+                  <input
+                    id="importDataInput"
+                    type="file"
+                    accept=".json,application/json"
+                    hidden
+                  />
+                </div>
+                <p
+                  id="backupNotice"
+                  class="backup-notice"
+                  role="status"
+                  aria-live="polite"
+                ></p>
+              </section>
+            </div>
+          </details>
         </aside>
       </section>
     </main>
