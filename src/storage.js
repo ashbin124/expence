@@ -10,15 +10,42 @@ const DEFAULT_SETTINGS = {
   reminderLeadDays: 1,
 };
 
-const SUPPORTED_LOCALES = new Set(["en-IN", "en-US", "en-GB"]);
-const SUPPORTED_CURRENCIES = new Set(["INR", "USD", "EUR", "GBP"]);
+const SUPPORTED_LOCALES = new Set([
+  "en-IN",
+  "en-US",
+  "en-GB",
+  "en-AU",
+  "en-CA",
+  "en-SG",
+  "hi-IN",
+  "fr-FR",
+  "de-DE",
+]);
+const SUPPORTED_CURRENCIES = new Set([
+  "INR",
+  "USD",
+  "EUR",
+  "GBP",
+  "AED",
+  "AUD",
+  "CAD",
+  "JPY",
+  "SGD",
+]);
 const SUPPORTED_TIMEZONES = new Set([
   "Asia/Kolkata",
   "UTC",
   "America/New_York",
+  "America/Los_Angeles",
+  "America/Toronto",
   "Europe/London",
+  "Europe/Berlin",
+  "Asia/Dubai",
+  "Asia/Singapore",
+  "Asia/Tokyo",
+  "Australia/Sydney",
 ]);
-const SUPPORTED_REMINDER_LEAD_DAYS = new Set([0, 1, 3, 7]);
+const SUPPORTED_REMINDER_LEAD_DAYS = new Set([0, 1, 2, 3, 7, 14]);
 
 function safeParseTransactions(raw) {
   if (!raw) return [];

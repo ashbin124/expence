@@ -29,6 +29,13 @@
           Track income and expenses with instant totals. Choose Expense or Income, enter
           amount, and save.
         </p>
+        <nav class="desktop-shortcuts" aria-label="Desktop quick links">
+          <a class="shortcut-link" href="#transactionsSection">Transactions</a>
+          <a class="shortcut-link" href="#insightsSection">Insights</a>
+          <a class="shortcut-link" href="#quickAddSection">Quick Add</a>
+          <a class="shortcut-link" href="#remindersSection">Reminders</a>
+          <a class="shortcut-link" href="#settingsSection">Settings</a>
+        </nav>
       </section>
 
       <section class="content">
@@ -56,6 +63,7 @@
           </div>
 
           <div
+            id="transactionsSection"
             class="tool-row"
             aria-label="Transaction controls"
             data-mobile-view="transactions"
@@ -165,6 +173,7 @@
           </section>
 
           <section
+            id="insightsSection"
             class="insight-section"
             aria-label="Insights dashboard"
             data-mobile-view="insights"
@@ -196,7 +205,7 @@
             </button>
           </section>
 
-          <section class="quick-add-panel" data-mobile-view="add">
+          <section id="quickAddSection" class="quick-add-panel" data-mobile-view="add">
             <h2 id="formTitle" class="form-title">Quick Add</h2>
             <p class="hint">
               Pick type, enter amount, and save. Note is optional, date auto-uses today.
@@ -299,6 +308,7 @@
           </section>
 
           <section
+            id="remindersSection"
             class="reminder-panel"
             aria-label="Bill reminders"
             data-mobile-view="reminders"
@@ -354,6 +364,7 @@
           </section>
 
           <section
+            id="settingsSection"
             class="settings-panel"
             aria-label="App settings"
             data-mobile-view="settings"
@@ -369,6 +380,12 @@
                   <option value="en-IN">English (India)</option>
                   <option value="en-US">English (US)</option>
                   <option value="en-GB">English (UK)</option>
+                  <option value="en-AU">English (Australia)</option>
+                  <option value="en-CA">English (Canada)</option>
+                  <option value="en-SG">English (Singapore)</option>
+                  <option value="hi-IN">Hindi (India)</option>
+                  <option value="fr-FR">French (France)</option>
+                  <option value="de-DE">German (Germany)</option>
                 </select>
               </div>
               <div class="field settings-row">
@@ -379,6 +396,11 @@
                     <option value="USD">USD ($)</option>
                     <option value="EUR">EUR (€)</option>
                     <option value="GBP">GBP (£)</option>
+                    <option value="AED">AED (د.إ)</option>
+                    <option value="AUD">AUD (A$)</option>
+                    <option value="CAD">CAD (C$)</option>
+                    <option value="JPY">JPY (¥)</option>
+                    <option value="SGD">SGD (S$)</option>
                   </select>
                 </div>
                 <div>
@@ -387,7 +409,14 @@
                     <option value="Asia/Kolkata">Asia/Kolkata</option>
                     <option value="UTC">UTC</option>
                     <option value="America/New_York">America/New_York</option>
+                    <option value="America/Los_Angeles">America/Los_Angeles</option>
+                    <option value="America/Toronto">America/Toronto</option>
                     <option value="Europe/London">Europe/London</option>
+                    <option value="Europe/Berlin">Europe/Berlin</option>
+                    <option value="Asia/Dubai">Asia/Dubai</option>
+                    <option value="Asia/Singapore">Asia/Singapore</option>
+                    <option value="Asia/Tokyo">Asia/Tokyo</option>
+                    <option value="Australia/Sydney">Australia/Sydney</option>
                   </select>
                 </div>
               </div>
@@ -396,8 +425,10 @@
                 <select id="settingsReminderLeadDays" name="settingsReminderLeadDays">
                   <option value="0">Due day only</option>
                   <option value="1">1 day before</option>
+                  <option value="2">2 days before</option>
                   <option value="3">3 days before</option>
                   <option value="7">7 days before</option>
+                  <option value="14">14 days before</option>
                 </select>
               </div>
               <div class="settings-actions">

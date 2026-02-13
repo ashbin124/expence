@@ -184,4 +184,23 @@ describe("storage", () => {
       reminderLeadDays: 1,
     });
   });
+
+  it("accepts extended settings options", () => {
+    localStorage.setItem(
+      SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        locale: "hi-IN",
+        currency: "AED",
+        timeZone: "Asia/Dubai",
+        reminderLeadDays: 14,
+      }),
+    );
+
+    expect(loadSettings()).toEqual({
+      locale: "hi-IN",
+      currency: "AED",
+      timeZone: "Asia/Dubai",
+      reminderLeadDays: 14,
+    });
+  });
 });
