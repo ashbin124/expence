@@ -196,8 +196,9 @@ h1 {
   overflow-y: auto;
   overflow-x: hidden;
   background: #fffcf8;
-  min-height: 280px;
-  max-height: 460px;
+  min-height: 200px;
+  max-height: 320px;
+  scrollbar-gutter: stable;
 }
 
 .transaction-list {
@@ -563,6 +564,7 @@ select:focus {
   }
 
   .list-wrap {
-    max-height: 360px;
+    min-height: 180px;
+    max-height: 240px;
   }
 }
