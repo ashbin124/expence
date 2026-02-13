@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   BUDGET_STORAGE_KEY,
+  REMINDER_STORAGE_KEY,
   STORAGE_KEY,
   loadBudget,
+  loadReminders,
   loadTransactions,
   saveBudget,
+  saveReminders,
   saveTransactions,
 } from "./storage.js";
 
@@ -100,5 +103,51 @@ describe("storage", () => {
 
     localStorage.setItem(BUDGET_STORAGE_KEY, "-50");
     expect(loadBudget()).toBe(0);
+  });
+
+  it("saves and loads reminders correctly", () => {
+    const reminders = [
+      {
+        id: "rem-1",
+        title: "Internet",
+        amount: 999,
+        dueDate: "2026-02-20",
+        lastNotifiedOn: null,
+      },
+    ];
+
+    saveReminders(reminders);
+    expect(loadReminders()).toEqual(reminders);
+  });
+
+  it("filters invalid reminder records", () => {
+    localStorage.setItem(
+      REMINDER_STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: "rem-good",
+          title: "Rent",
+          amount: 15000,
+          dueDate: "2026-02-28",
+          lastNotifiedOn: "2026-02-13",
+        },
+        {
+          id: "rem-bad",
+          title: "Invalid",
+          amount: -50,
+          dueDate: "13-02-2026",
+        },
+      ]),
+    );
+
+    expect(loadReminders()).toEqual([
+      {
+        id: "rem-good",
+        title: "Rent",
+        amount: 15000,
+        dueDate: "2026-02-28",
+        lastNotifiedOn: "2026-02-13",
+      },
+    ]);
   });
 });

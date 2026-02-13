@@ -19,8 +19,8 @@
       href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="./assets/main-1aL2Ulnw.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/main-wInxloUp.css">
+    <script type="module" crossorigin src="./assets/main-BEEWYZiE.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/main-COdn22Qi.css">
   </head>
   <body>
     <main class="shell">
@@ -78,6 +78,11 @@
           <section class="monthly-section" aria-label="Monthly overview">
             <h3 class="section-title">Monthly Overview</h3>
             <div id="monthlyOverview" class="monthly-overview"></div>
+          </section>
+
+          <section class="insight-section" aria-label="Insights dashboard">
+            <h3 class="section-title">Insights</h3>
+            <div id="insightGrid" class="insight-grid"></div>
           </section>
         </article>
 
@@ -199,12 +204,59 @@
             </p>
           </section>
 
+          <section class="reminder-panel" aria-label="Bill reminders">
+            <h3 class="section-title">Bill Reminders</h3>
+            <p class="hint">
+              Track upcoming due dates and log paid bills quickly as expenses.
+            </p>
+            <form id="reminderForm" class="reminder-form" novalidate>
+              <div class="field">
+                <label for="reminderTitle">Bill Name</label>
+                <input
+                  id="reminderTitle"
+                  name="reminderTitle"
+                  type="text"
+                  maxlength="50"
+                  required
+                  placeholder="e.g. Internet Bill"
+                />
+              </div>
+              <div class="field reminder-row">
+                <div>
+                  <label for="reminderAmount">Amount (INR)</label>
+                  <input
+                    id="reminderAmount"
+                    name="reminderAmount"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    placeholder="e.g. 999"
+                  />
+                </div>
+                <div>
+                  <label for="reminderDate">Due Date</label>
+                  <input id="reminderDate" name="reminderDate" type="date" required />
+                </div>
+              </div>
+              <div class="reminder-actions">
+                <button class="ghost-btn" type="submit">Add Reminder</button>
+                <button id="enableReminderAlertsBtn" class="ghost-btn" type="button">
+                  Enable Alerts
+                </button>
+              </div>
+            </form>
+            <p
+              id="reminderNotice"
+              class="reminder-notice"
+              role="status"
+              aria-live="polite"
+            ></p>
+            <ul id="reminderList" class="reminder-list" aria-live="polite"></ul>
+          </section>
+
           <details class="more-panel" aria-label="More options">
-            <summary
-              class="more-trigger"
-              aria-label="More options"
-              title="More options"
-            >
+            <summary class="more-trigger" aria-label="More options" title="More options">
               <span aria-hidden="true">...</span>
             </summary>
 
@@ -247,6 +299,11 @@
         </aside>
       </section>
     </main>
+
+    <div id="undoToast" class="undo-toast" role="status" aria-live="polite" hidden>
+      <span id="undoToastText">Transaction deleted.</span>
+      <button id="undoDeleteBtn" class="undo-btn" type="button">Undo</button>
+    </div>
 
     <script>
       (function redirectGitHubPagesSourceBuild() {

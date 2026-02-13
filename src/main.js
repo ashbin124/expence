@@ -1,7 +1,16 @@
 import { getISODateInTimeZone, renderBudget } from "./budget.js";
-import { loadBudget, loadTransactions, saveBudget, saveTransactions } from "./storage.js";
 import {
+  loadBudget,
+  loadReminders,
+  loadTransactions,
+  saveBudget,
+  saveReminders,
+  saveTransactions,
+} from "./storage.js";
+import {
+  renderBillReminders,
   renderFilterButtons,
+  renderInsights,
   renderMonthlyOverview,
   renderSummary,
   renderTransactions,
@@ -13,6 +22,7 @@ const APP_TIMEZONE = "Asia/Kolkata";
 
 const state = {
   transactions: [],
+  reminders: [],
   filter: "all",
   search: "",
   editingId: null,
@@ -38,16 +48,30 @@ const importDataInput = document.getElementById("importDataInput");
 const backupNoticeEl = document.getElementById("backupNotice");
 const installAppBtn = document.getElementById("installAppBtn");
 const installAppHintEl = document.getElementById("installAppHint");
+const reminderForm = document.getElementById("reminderForm");
+const reminderTitleInput = document.getElementById("reminderTitle");
+const reminderAmountInput = document.getElementById("reminderAmount");
+const reminderDateInput = document.getElementById("reminderDate");
+const reminderListEl = document.getElementById("reminderList");
+const reminderNoticeEl = document.getElementById("reminderNotice");
+const enableReminderAlertsBtn = document.getElementById("enableReminderAlertsBtn");
+const reminderSubmitBtn = reminderForm?.querySelector('button[type="submit"]');
+const undoToastEl = document.getElementById("undoToast");
+const undoToastTextEl = document.getElementById("undoToastText");
+const undoDeleteBtn = document.getElementById("undoDeleteBtn");
 const filterButtons = document.querySelectorAll(".filter-btn");
 const budgetSubmitBtn = budgetForm.querySelector('button[type="submit"]');
 
 let mainLoadingCount = 0;
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 let deferredInstallPrompt = null;
+let pendingDeletedTransaction = null;
+let undoDeleteTimer = null;
 
 const elements = {
   listEl: document.getElementById("transactionList"),
   monthlyOverviewEl: document.getElementById("monthlyOverview"),
+  insightGridEl: document.getElementById("insightGrid"),
   balanceEl: document.getElementById("balance"),
   incomeEl: document.getElementById("income"),
   expenseEl: document.getElementById("expense"),
@@ -126,6 +150,109 @@ function showBackupNotice(message, type = "info") {
 
 function clearBackupNotice() {
   showBackupNotice("");
+}
+
+function showReminderNotice(message, type = "info") {
+  if (!reminderNoticeEl) return;
+
+  reminderNoticeEl.textContent = message;
+  reminderNoticeEl.className = "reminder-notice";
+
+  if (type === "success") {
+    reminderNoticeEl.classList.add("backup-notice-success");
+    return;
+  }
+
+  if (type === "error") {
+    reminderNoticeEl.classList.add("backup-notice-error");
+  }
+}
+
+function clearReminderNotice() {
+  showReminderNotice("");
+}
+
+function clearUndoToast() {
+  if (undoDeleteTimer) {
+    clearTimeout(undoDeleteTimer);
+    undoDeleteTimer = null;
+  }
+
+  pendingDeletedTransaction = null;
+
+  if (!undoToastEl || !undoToastTextEl) return;
+  undoToastEl.hidden = true;
+  undoToastTextEl.textContent = "Transaction deleted.";
+}
+
+function showUndoToast(deletedTransaction, deletedIndex) {
+  if (!undoToastEl || !undoToastTextEl) return;
+
+  if (undoDeleteTimer) {
+    clearTimeout(undoDeleteTimer);
+  }
+
+  pendingDeletedTransaction = {
+    transaction: deletedTransaction,
+    index: deletedIndex,
+  };
+
+  undoToastTextEl.textContent = `Deleted "${deletedTransaction.title}".`;
+  undoToastEl.hidden = false;
+
+  undoDeleteTimer = window.setTimeout(() => {
+    clearUndoToast();
+  }, 6000);
+}
+
+function undoLastDeletedTransaction() {
+  if (!pendingDeletedTransaction) return;
+
+  const { transaction, index } = pendingDeletedTransaction;
+  const insertAt = Math.min(Math.max(index, 0), state.transactions.length);
+  const nextTransactions = state.transactions.slice();
+  nextTransactions.splice(insertAt, 0, transaction);
+  state.transactions = nextTransactions;
+
+  saveTransactions(state.transactions);
+  clearUndoToast();
+  renderAll();
+}
+
+function shouldEnableReminderAlerts() {
+  return typeof Notification !== "undefined";
+}
+
+function getReminderAlertPermission() {
+  if (!shouldEnableReminderAlerts()) return "unsupported";
+  return Notification.permission;
+}
+
+function updateReminderAlertButton() {
+  if (!enableReminderAlertsBtn) return;
+
+  const permission = getReminderAlertPermission();
+
+  if (permission === "granted") {
+    enableReminderAlertsBtn.textContent = "Alerts Enabled";
+    enableReminderAlertsBtn.disabled = true;
+    return;
+  }
+
+  if (permission === "denied") {
+    enableReminderAlertsBtn.textContent = "Alerts Blocked";
+    enableReminderAlertsBtn.disabled = true;
+    return;
+  }
+
+  if (permission === "unsupported") {
+    enableReminderAlertsBtn.textContent = "Alerts Unavailable";
+    enableReminderAlertsBtn.disabled = true;
+    return;
+  }
+
+  enableReminderAlertsBtn.textContent = "Enable Alerts";
+  enableReminderAlertsBtn.disabled = false;
 }
 
 function registerServiceWorker() {
@@ -235,6 +362,73 @@ function setupInstallPrompt() {
   updateInstallUi();
 }
 
+async function requestReminderAlertPermission() {
+  if (!shouldEnableReminderAlerts()) {
+    showReminderNotice("Browser notifications are not supported on this device.");
+    updateReminderAlertButton();
+    return;
+  }
+
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      showReminderNotice("Bill alerts enabled.", "success");
+      triggerDueReminderNotifications();
+    } else if (permission === "denied") {
+      showReminderNotice(
+        "Alerts blocked. Enable notifications in browser settings.",
+        "error",
+      );
+    } else {
+      showReminderNotice("Alert permission request dismissed.");
+    }
+  } catch (error) {
+    showReminderNotice(readErrorMessage(error, "Unable to enable alerts."), "error");
+  } finally {
+    updateReminderAlertButton();
+  }
+}
+
+function triggerDueReminderNotifications() {
+  if (getReminderAlertPermission() !== "granted") return;
+  if (state.reminders.length === 0) return;
+
+  const todayISO = getISODateInTimeZone(APP_TIMEZONE, APP_LOCALE);
+  const todayAtMidnight = new Date(todayISO + "T00:00:00");
+  const nextReminders = state.reminders.map((reminder) => {
+    if (reminder.lastNotifiedOn === todayISO) return reminder;
+
+    const dueDateAtMidnight = new Date(reminder.dueDate + "T00:00:00");
+    const daysUntil = Math.round(
+      (dueDateAtMidnight.getTime() - todayAtMidnight.getTime()) / (24 * 60 * 60 * 1000),
+    );
+
+    if (daysUntil < 0 || daysUntil > 1) {
+      return reminder;
+    }
+
+    const prefix = daysUntil === 0 ? "Due today" : "Due tomorrow";
+    new Notification(`Bill Reminder: ${reminder.title}`, {
+      body: `${prefix} - ${formatCurrency(reminder.amount)}`,
+      tag: `bill-reminder-${reminder.id}`,
+    });
+
+    return {
+      ...reminder,
+      lastNotifiedOn: todayISO,
+    };
+  });
+
+  const changed = nextReminders.some(
+    (reminder, index) =>
+      reminder.lastNotifiedOn !== state.reminders[index].lastNotifiedOn,
+  );
+  if (!changed) return;
+
+  state.reminders = nextReminders;
+  saveReminders(state.reminders);
+}
+
 function setMainControlsDisabled(disabled) {
   submitBtn.disabled = disabled;
   cancelEditBtn.disabled = disabled;
@@ -244,6 +438,22 @@ function setMainControlsDisabled(disabled) {
   exportDataBtn.disabled = disabled;
   importDataBtn.disabled = disabled;
   importDataInput.disabled = disabled;
+  if (reminderTitleInput) {
+    reminderTitleInput.disabled = disabled;
+  }
+  if (reminderAmountInput) {
+    reminderAmountInput.disabled = disabled;
+  }
+  if (reminderDateInput) {
+    reminderDateInput.disabled = disabled;
+  }
+  if (reminderSubmitBtn) {
+    reminderSubmitBtn.disabled = disabled;
+  }
+  if (enableReminderAlertsBtn) {
+    enableReminderAlertsBtn.disabled =
+      disabled || getReminderAlertPermission() !== "default";
+  }
 
   amountInput.disabled = disabled;
   titleInput.disabled = disabled;
@@ -300,6 +510,25 @@ function isValidTransactionRecord(item) {
   );
 }
 
+function isValidReminderRecord(item) {
+  if (!item || typeof item !== "object") return false;
+
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+  return (
+    typeof item.id === "string" &&
+    typeof item.title === "string" &&
+    typeof item.amount === "number" &&
+    Number.isFinite(item.amount) &&
+    item.amount > 0 &&
+    typeof item.dueDate === "string" &&
+    dateRegex.test(item.dueDate) &&
+    (item.lastNotifiedOn === null ||
+      item.lastNotifiedOn === undefined ||
+      (typeof item.lastNotifiedOn === "string" && dateRegex.test(item.lastNotifiedOn)))
+  );
+}
+
 function normalizeImportedTransactions(records) {
   return records.filter(isValidTransactionRecord).map((item) => ({
     id: item.id,
@@ -307,6 +536,16 @@ function normalizeImportedTransactions(records) {
     amount: item.amount,
     category: item.category,
     date: item.date,
+  }));
+}
+
+function normalizeImportedReminders(records) {
+  return records.filter(isValidReminderRecord).map((item) => ({
+    id: item.id,
+    title: item.title,
+    amount: item.amount,
+    dueDate: item.dueDate,
+    lastNotifiedOn: item.lastNotifiedOn ?? null,
   }));
 }
 
@@ -325,6 +564,7 @@ function parseBackupData(rawText) {
     return {
       transactions,
       budgetLimit: 0,
+      reminders: [],
       skippedCount: parsed.length - transactions.length,
     };
   }
@@ -338,13 +578,16 @@ function parseBackupData(rawText) {
   }
 
   const transactions = normalizeImportedTransactions(parsed.transactions);
+  const reminders = Array.isArray(parsed.reminders)
+    ? normalizeImportedReminders(parsed.reminders)
+    : [];
   const skippedCount = parsed.transactions.length - transactions.length;
 
   const parsedBudget = Number(parsed.budgetLimit);
   const budgetLimit =
     Number.isFinite(parsedBudget) && parsedBudget > 0 ? parsedBudget : 0;
 
-  return { transactions, budgetLimit, skippedCount };
+  return { transactions, budgetLimit, reminders, skippedCount };
 }
 
 function buildBackupData() {
@@ -353,6 +596,7 @@ function buildBackupData() {
     exportedAt: new Date().toISOString(),
     budgetLimit: state.budgetLimit,
     transactions: state.transactions,
+    reminders: state.reminders,
   };
 }
 
@@ -384,13 +628,17 @@ async function handleImportBackupFile(file) {
 
       state.transactions = imported.transactions;
       state.budgetLimit = imported.budgetLimit;
+      state.reminders = imported.reminders;
 
       saveTransactions(state.transactions);
       saveBudget(state.budgetLimit);
+      saveReminders(state.reminders);
 
       syncBudgetInput();
+      clearUndoToast();
       renderAll();
       resetForm();
+      triggerDueReminderNotifications();
 
       if (imported.skippedCount > 0) {
         showBackupNotice(
@@ -434,6 +682,8 @@ function setEditMode(transaction) {
 }
 
 function renderAll() {
+  const todayISO = getISODateInTimeZone(APP_TIMEZONE, APP_LOCALE);
+
   renderSummary({ transactions: state.transactions, elements, formatCurrency });
 
   renderBudget({
@@ -459,6 +709,21 @@ function renderAll() {
     formatMonthLabel,
   });
 
+  renderInsights({
+    transactions: state.transactions,
+    insightGridEl: elements.insightGridEl,
+    formatCurrency,
+    todayISO,
+  });
+
+  renderBillReminders({
+    reminders: state.reminders,
+    reminderListEl,
+    formatCurrency,
+    locale: APP_LOCALE,
+    todayISO,
+  });
+
   renderFilterButtons({
     filterButtons,
     activeFilter: state.filter,
@@ -472,9 +737,17 @@ function resetForm() {
   amountInput.focus();
 }
 
+function resetReminderForm() {
+  if (!reminderForm || !reminderDateInput) return;
+
+  reminderForm.reset();
+  reminderDateInput.value = getISODateInTimeZone(APP_TIMEZONE, APP_LOCALE);
+}
+
 function loadLocalDataIntoState() {
   state.transactions = loadTransactions();
   state.budgetLimit = loadBudget();
+  state.reminders = loadReminders();
   syncBudgetInput();
 }
 
@@ -540,6 +813,10 @@ elements.listEl.addEventListener("click", async (event) => {
   if (action === "delete") {
     try {
       await runWithMainLoading(async () => {
+        const deletedIndex = state.transactions.findIndex((item) => item.id === id);
+        if (deletedIndex < 0) return;
+
+        const deletedTransaction = state.transactions[deletedIndex];
         state.transactions = state.transactions.filter((item) => item.id !== id);
         saveTransactions(state.transactions);
 
@@ -548,6 +825,7 @@ elements.listEl.addEventListener("click", async (event) => {
         }
 
         renderAll();
+        showUndoToast(deletedTransaction, deletedIndex);
       });
     } catch (error) {
       showError(readErrorMessage(error, "Unable to delete transaction right now."));
@@ -611,6 +889,7 @@ clearAllBtn.addEventListener("click", async () => {
     await runWithMainLoading(async () => {
       state.transactions = [];
       saveTransactions([]);
+      clearUndoToast();
       renderAll();
       resetForm();
     });
@@ -677,11 +956,138 @@ importDataInput.addEventListener("change", async () => {
   await handleImportBackupFile(selectedFile);
 });
 
+if (reminderForm) {
+  reminderForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    clearError();
+    clearReminderNotice();
+
+    const title = reminderTitleInput.value.trim();
+    const amount = Number(reminderAmountInput.value);
+    const dueDate = reminderDateInput.value;
+
+    if (!title) {
+      showReminderNotice("Bill name is required.", "error");
+      return;
+    }
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      showReminderNotice("Reminder amount must be greater than 0.", "error");
+      return;
+    }
+
+    if (!dueDate) {
+      showReminderNotice("Please select a due date.", "error");
+      return;
+    }
+
+    try {
+      await runWithMainLoading(async () => {
+        state.reminders.push({
+          id: createId(),
+          title,
+          amount: Math.round(amount * 100) / 100,
+          dueDate,
+          lastNotifiedOn: null,
+        });
+
+        saveReminders(state.reminders);
+        resetReminderForm();
+        renderAll();
+        triggerDueReminderNotifications();
+      });
+
+      showReminderNotice("Reminder added.", "success");
+    } catch (error) {
+      showReminderNotice(readErrorMessage(error, "Unable to add reminder."), "error");
+    }
+  });
+}
+
+if (reminderListEl) {
+  reminderListEl.addEventListener("click", async (event) => {
+    if (!(event.target instanceof Element)) return;
+
+    const button = event.target.closest("button[data-action]");
+    if (!(button instanceof HTMLButtonElement)) return;
+
+    const id = button.dataset.id;
+    const action = button.dataset.action;
+    if (!id || !action) return;
+
+    if (action === "delete-reminder") {
+      try {
+        await runWithMainLoading(async () => {
+          state.reminders = state.reminders.filter((item) => item.id !== id);
+          saveReminders(state.reminders);
+          renderAll();
+        });
+        showReminderNotice("Reminder deleted.", "success");
+      } catch (error) {
+        showReminderNotice(
+          readErrorMessage(error, "Unable to delete reminder."),
+          "error",
+        );
+      }
+
+      return;
+    }
+
+    if (action === "pay-reminder") {
+      const reminder = state.reminders.find((item) => item.id === id);
+      if (!reminder) return;
+
+      const paymentDate = getISODateInTimeZone(APP_TIMEZONE, APP_LOCALE);
+
+      try {
+        await runWithMainLoading(async () => {
+          state.transactions.push({
+            id: createId(),
+            title: reminder.title,
+            amount: -Math.abs(reminder.amount),
+            category: "Bill",
+            date: paymentDate,
+          });
+
+          state.reminders = state.reminders.filter((item) => item.id !== id);
+
+          saveTransactions(state.transactions);
+          saveReminders(state.reminders);
+          renderAll();
+        });
+
+        showReminderNotice("Bill logged as paid.", "success");
+      } catch (error) {
+        showReminderNotice(
+          readErrorMessage(error, "Unable to log bill payment."),
+          "error",
+        );
+      }
+    }
+  });
+}
+
+if (enableReminderAlertsBtn) {
+  enableReminderAlertsBtn.addEventListener("click", async () => {
+    await requestReminderAlertPermission();
+  });
+}
+
+if (undoDeleteBtn) {
+  undoDeleteBtn.addEventListener("click", () => {
+    undoLastDeletedTransaction();
+  });
+}
+
 (function init() {
   loadLocalDataIntoState();
   setSelectedType("expense");
+  resetReminderForm();
   clearBackupNotice();
+  clearReminderNotice();
+  updateReminderAlertButton();
   registerServiceWorker();
   setupInstallPrompt();
+  triggerDueReminderNotifications();
   renderAll();
 })();
